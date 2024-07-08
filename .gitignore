@@ -68,6 +68,7 @@ Temporary Items
 ### Linux template
 *~
 .*.swp
+*.lnk
 
 !/.gitignore
 !/README.md

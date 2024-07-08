@@ -1,0 +1,357 @@
+/*
+	New stuff:
+	logic [31: 0] a_vect;
+	logic [0 :31] b_vect;
+	logic [63: 0] dword;
+	integer sel;
+	a_vect[ 0 +: 8] // == a_vect[ 7 : 0]
+	a_vect[15 -: 8] // == a_vect[15 : 8]
+	b_vect[ 0 +: 8] // == b_vect[0 : 7]
+	b_vect[15 -: 8] // == b_vect[8 :15]
+	dword[8*sel +: 8] // variable part-select with fixed width
+*/
+/*
+// Integer square root (using binary search)
+unsigned int isqrt(unsigned int y)
+{
+	unsigned int L = 0;
+	unsigned int M;
+	unsigned int R = y + 1;
+
+    while (L != R - 1)
+    {
+        M = (L + R) / 2;
+
+		if (M * M <= y)
+			L = M;
+		else
+			R = M;
+	}
+
+    return L;
+}
+*/
+module waveform_extractor 
+	(
+		fifo_dout_i		,
+		mem_dout_real_i	,
+		mem_dout_imag_i	,
+		// m_axis_tdata_o,
+		// mem_addr_o,
+		rstn,
+		clk
+	);
+// parameter N = 16;
+parameter [31:0] N_DDS = 16;
+parameter [31:0] STORED_SETS = 16; // 16 values per set, must be power of 2
+// unlike the DAC Verilog (async reset), this follows the convention that has been set by the rest of the FPGA (sync reset)
+// section 0: I/O
+input										rstn;
+input										clk;
+input		[159:0]							fifo_dout_i;
+input 		[N_DDS*16-1:0]					mem_dout_real_i;
+input 		[N_DDS*16-1:0]					mem_dout_imag_i;
+// section 1
+reg signed	[15:0]							last_real[0:N_DDS-1];
+reg signed	[15:0]							last_imag[0:N_DDS-1];
+reg signed	[31:0]							last_abr2[0:N_DDS-1];
+reg signed	[31:0]							last_abi2[0:N_DDS-1];
+// section 2
+reg signed	[31:0]							stored_values[0:N_DDS*STORED_SETS-1];		// structured as 2D array, with index 0 to N_DDS - 1 being the most recent page
+wire signed	[31:0]							stored_values_la[0:N_DDS*STORED_SETS-1];	// actually will be used in section 4
+// section 3
+reg signed	[31:0]							cmp_values[0:N_DDS*STORED_SETS-1];
+wire signed	[31:0]							cmp_value_last;
+reg											refresh;
+// section 4
+//wire		[N_DDS*STORED_SETS-1:0]	argmax_equal;
+wire signed	[31:0]							cmp_future_;
+reg signed	[31:0]							cmp_present;
+wire		[N_DDS*STORED_SETS-1:0]			is_meq_to_halfmax;
+reg			[$clog2(N_DDS*STORED_SETS):0]	halfmax_accum[0:N_DDS*STORED_SETS-1];
+wire		[$clog2(N_DDS*STORED_SETS):0]	zero_to_half_tally;
+wire		[$clog2(N_DDS*STORED_SETS):0]	rise_to_fall_tally;
+reg			[$clog2(N_DDS*STORED_SETS):0]	zero_to_half;
+reg			[$clog2(N_DDS*STORED_SETS):0]	rise_to_fall;
+// section 5: controls
+reg											bc_ready;
+reg											a_ready;
+reg											a_calc;
+reg 		[31:0]							sqrt_L;
+reg 		[31:0]							sqrt_R;
+reg 		[31:0]							sqrt_M;
+wire 		[31:0]							sqrt_M_wire;
+wire 		[63:0]							sqrt_M_squared_plus_1;
+wire 										sqrt_M_squared_plus_1_more_than_max;
+wire 										stability_LMR;
+reg 		[31:0]							gauss_a;
+reg 		[31:0]							gauss_b;
+reg 		[31:0]							gauss_c;
+wire 		[47:0]							gauss_c_wireholder;
+
+// 	THE GOAL: extract a, b, c of y = a * math.exp(-(x - b)^2 / (2c^2))
+//	a is maximum height
+//	b is delay offset
+//	c is pulse span
+
+// section 1 "assignment" - long form
+generate 
+genvar i;
+	for (i=0; i<N_DDS; i=i+1) begin :
+		always @(posedge clk) begin
+			if (~rstn) begin
+				last_abr2[i]						<=	0;
+				last_real[i]						<=	0;
+				last_imag[i]						<=	0;
+				last_abi2[i]						<=	0;
+			end
+			else begin
+				last_real[i]						<=	mem_dout_real_i		[i*16 +: 16];
+				last_imag[i]						<=	mem_dout_imag_i		[i*16 +: 16];
+				last_abr2[i]						<=	last_real[i] * last_real[i];
+				last_abi2[i]						<=	last_imag[i] * last_imag[i];
+				// yes it says signed, therefore we expect last_ab#2[i]'s MSB to be 0
+			end
+		end
+	end
+endgenerate
+// section 2 "assignment" - short form
+generate
+genvar i, j;
+	for (i=0; i<STORED_SETS; i=i+1) begin :
+		for (j=0; j<N_DDS; j=j+1) begin :
+			if (i==0) begin
+				always @(posedge clk) begin
+					stored_values[i*N_DDS + j]		<=	~rstn ? 0 : last_abr2[j] + last_abi2[j]
+				end
+			end
+			else begin
+				always @(posedge clk) begin
+					stored_values[i*N_DDS + j]		<=	~rstn ? 0 : stored_values[(i-1)*N_DDS + j]
+				end
+			end
+		end
+	end
+endgenerate
+generate
+genvar i;
+	for (i=0; i<N_DDS*STORED_SETS; i=i+1) begin :
+		latency_reg
+			#(
+				.N(1 + $clog2(N_DDS*STORED_SETS)),
+				.B(32)
+			)
+			stored_values_la_i
+			(
+				.rstn	(rstn				),
+				.clk	(clk				),
+				.din	(stored_values[i]	),
+				.dout	(stored_values_la[i]) // takes 3 + 9 clock cycles for data to get here
+			);
+	end
+endgenerate
+// section 3 "assignment" - long form
+generate
+genvar i;
+	for (i=0; i<N_DDS*STORED_SETS/2; i=i+1) begin :
+		always @(posedge clk) begin
+			if (~rstn | refresh) begin
+				cmp_values[i]						<=	0;
+				cmp_values[N_DDS*STORED_SETS/2+i]	<=	0;
+			end
+			else begin
+				cmp_values[i]						<=	(stored_values[2 * i] - stored_values[2 * i + 1])[31] ? stored_values[2 * i + 1] : stored_values[2 * i];
+				cmp_values[N_DDS*STORED_SETS/2+i]	<=	(cmp_values[2 * i] - cmp_values[2 * i + 1])[31] ? cmp_values[2 * i + 1] : cmp_values[2 * i];
+			end
+		end
+		/*
+			So, I should explain:
+			(1) - Comparing method
+			We know stored_values is signed and non-negative (as it is a sum of squares)
+			Therefore, the sign bit of (a - b), which is its MSB is 1 (negative) or 0 (non-negative)  
+			Therefore the truth value of (a < b) is as simple as checking its MSB
+
+			(2) - Comparison structure 
+			There are 16 * STORED_SETS = 256 = 2^8 stored values - can be extrapolated to deeper/shallower trees
+			Linear compare takes 2^8 clock cycles, which is stupid
+			Therefore, tree compare: should take ceil_log2(2^8) = 8 clock cycles
+			tree layer 0: each compares two values from original 2^8 values, outputs the higher value of both, has 2^7 entries
+			tree layer 1: each compares two values from previous 2^7 values, outputs the higher value of both, has 2^6 entries
+			...
+			tree layer 7: each compares two values from previous 2^1 values, outputs the higher value of both, has 2^0 entries
+
+			Therefore, this is how it is supposed to be structured:
+
+			000
+			001		128
+			002		129		192
+			003		130		193		224
+			004		131		194		225		240
+			005		132		195		226		241		248
+			006		133		196		227		242		249		252
+			007		134		197		228		243		250		253		254
+			...		...		...		...		...		...		...		
+			127
+			
+			Note that: 
+				tree layer 1
+				index 128+000+z		compares index 000 + 2z	+ 0 and 000 + 2z + 1 for z from 000 to 063
+
+				tree layer 2
+				index 128+064+z		compares index 128 + 2z + 0 and 128 + 2z + 1 for z from 000 to 031
+									compares index 2(z + 064)+0 and 2(z + 064)+1
+				index 128+000+z		compares index 000 + 2z + 0 and 000 + 2z + 1 for z from 064 to 095
+
+				tree layer 3
+				index 128+096+z		compares index 192 + 2z + 0 and 192 + 2z + 1 for z from 000 to 015
+									compares index 2(z + 096)+0 and 2(z + 096)+1
+				index 128+000+z		compares index 000 + 2z + 0 and 000 + 2z + 1 for z from 096 to 111
+
+				...
+				tree layer 6
+				index 128+124+z		compares index 248 + 2z + 0 and 248 + 2z + 1 for z from 000 to 001
+									compares index 2(z + 124)+0 and 2(z + 124)+1
+				index 128+000+z		compares index 000 + 2z + 0 and 000 + 2z + 1 for z from 124 to 125
+				
+				tree layer 7 (final layer)
+				index 128+124+z		compares index 252 + 2z + 0 and 252 + 2z + 1 for z from 000 to 000 (just z = 0)
+									compares index 2(z + 126)+0 and 2(z + 126)+1
+				index 128+000+z		compares index 000 + 2z + 0 and 000 + 2z + 1 for z from 126 to 126 (just z = 126)
+			
+			so, we can assign index 128 + z to compare index 2z and index 2z + 1 for z = 0 to 126
+			However, we have z ranging from 0 to 127, so how would z = 127 looked like?
+			index 128 + 127 compares index 254 and 255 (itself), then outputs the higher value
+			This data persistence is normally desirable, but data needs to be flushed once calculation is complete
+			Hence, the refresh register in addition to reset
+			As now there are 1 + ceil_log2(2^8) = 9 layers, it will take 9 clock cycles to compare all data
+		*/
+	end
+endgenerate
+/* with N_DDS = 16 and STORED_SETS = &16&, we then take 1 + clog2(N_DDS * STORED_SETS) = ^9^, and N_DDS * STORED_SETS = #256#
+
+After this point, in 3 + ^9^ = $12$ clock cycles, we have:
+	stored_values_la[0:#256# - 1]	32 bits, #256# data with value = square of |data| inputted from $12$ to $12$ + &16& - 1 clock cycles ago
+	cmp_values[#256# - 1]			32 bits, 1 data that is max(stored_values_la, self)
+*/
+// section 4 "assignment" - long form
+generate
+genvar i;
+	for (i=0; i<N_DDS*STORED_SETS/2; i=i+1) begin :
+		// the reason to do is_meq_than_halfmax (y - max(y)/2 has a MSB of 0) instead of more (max(y)/2 - y has a MSB of 1):
+		//		setting non-strict inequality means &is_more_than_halfmax is 1 if all y == max(y)/2 (i.e. y = 0)
+		//		allowing zero_to_half_tally to begin from 0
+		assign is_meq_to_halfmax[2*i] = ~(stored_values_la[2*i] - (cmp_values[N_DDS*STORED_SETS - 1] >>> 1))[31]
+		assign is_meq_to_halfmax[2*i + 1] = ~(stored_values_la[2*i + 1] - (cmp_values[N_DDS*STORED_SETS - 1] >>> 1))[31]
+		always @(posedge clk) begin
+			if (~rstn | refresh) begin
+				halfmax_accum[i]						<=	0;
+				halfmax_accum[N_DDS*STORED_SETS/2+i]	<=	0;
+			end
+			else begin
+				halfmax_accum[i]						<=	is_meq_to_halfmax[2*i] + is_meq_to_halfmax[2*i + 1];
+				halfmax_accum[N_DDS*STORED_SETS/2+i]	<=	halfmax_accum[2*i] + halfmax_accum[2*i + 1];
+			end
+		end
+	end
+endgenerate
+// unlike in the compare tree, we MUST take halfmax_accum[N_DDS*STORED_SETS/2 - 2] as the final result, and we will obtain this value after ^9^ - 1 clock cycles
+latency_reg
+	#(
+		.N(1),
+		.B(32)
+	)
+	cmp_values_la_1
+	(
+		.rstn	(rstn				),
+		.clk	(clk				),
+		.din	(cmp_values[N_DDS*STORED_SETS - 1]),
+		.dout	(cmp_value_last)
+	);
+latency_reg
+	#(
+		.N($clog2(N_DDS*STORED_SETS) - 2), // not a typo, I need the data ^9^ - 2 cycles later in order to "peek the future"
+		.B(32)
+	)
+	cmp_values_la_0
+	(
+		.rstn	(rstn				),
+		.clk	(clk				),
+		.din	(cmp_value_last),
+		.dout	(cmp_future_)
+	);
+
+assign rise_to_fall_tally = halfmax_accum[N_DDS*STORED_SETS/2 - 2]; 	
+// starting value of rise_to_fall_tally is 256 (because max(y) = 0 means y >= max(y)/2 for all 256 values of y)
+// therefore, rise_to_fall's update is safeguarded by a criteria to update only when the current maximum is not 0
+assign zero_to_half_tally = {1'b1, $clog2(N_DDS*STORED_SETS)'d0} - halfmax_accum[N_DDS*STORED_SETS/2 - 2];
+always @(posedge clk) begin
+	if (~rstn | refresh) begin
+		zero_to_half									<=	0;
+		rise_to_fall									<=	0;
+		cmp_present										<=	0;
+	end
+	else begin
+		zero_to_half									<=	~|(cmp_future_ ^ cmp_present) & (zero_to_half < zero_to_half_tally) ? zero_to_half_tally : zero_to_half;
+		rise_to_fall									<=	|(cmp_present) & (rise_to_fall < rise_to_fall_tally) ? rise_to_fall_tally : rise_to_fall;
+		cmp_present										<=	cmp_future_;
+		// both zero_to_half and rise_to_fall only changes if the tally increases while its conditions are met
+		// zero_to_half only can change if the maximum value stabilizes
+		// rise_to_fall 
+	end
+end
+/*
+After this point, in 3 + ^9^ + ^9^ - 1 = 20 clock cycles, we have:
+	zero-to-half			^9^ - 1 bits, b - c * sqrt(2ln(2))
+	rise-to-fall			^9^ - 1 bits, 2 * c * sqrt(2ln(2))
+	cmp_values[#256# - 1]	32 bits, a^2
+	
+*/
+// section 5 "assignment" - long form
+always @(posedge clk) begin
+	if (~rstn | refresh) begin
+		bc_ready										<=	0;
+		a_ready											<=	0;
+		a_calc											<=	0;
+	end
+	else begin
+		bc_ready										<=	|(cmp_present) & ~|(cmp_future_ ^ cmp_present) & ~(rise_to_fall < rise_to_fall_tally);
+		a_ready											<=	a_ready | (|(cmp_value_last) & ~|(cmp_value_last ^ cmp_values[N_DDS*STORED_SETS - 1]));
+		a_calc											<=	a_ready;
+	end
+end
+// https://en.wikipedia.org/wiki/Integer_square_root
+// technically, this calculates floor(sqrt(max - 1)), because max - 1 + 1 will not overflow and max + 1 might
+// to fix sqrt(4) == 1, we bitwise-nor (sqrt_R)^2 ^ 4, which returns 1 if both are equal
+// at that point, it's obvious which one is the square root (sqrt_R if equal, otherwise sqrt_L)
+assign sqrt_M_squared_plus_1 = sqrt_M * sqrt_M + 1;
+assign sqrt_M_squared_plus_1_more_than_max = |sqrt_M_squared_plus_1[63:32] | (cmp_value_last - sqrt_M_squared_plus_1[31:0])[31];
+assign sqrt_M_wire = (sqrt_L + sqrt_R) >>> 1;
+always @(posedge clk) begin
+	if (~rstn | refresh | ~a_ready) begin
+		sqrt_L											<=	0;
+		sqrt_R											<=	0;
+		sqrt_M											<=	0;
+	end
+	else begin
+		sqrt_L											<=	a_calc ? (sqrt_M_squared_plus_1_more_than_max ? sqrt_L : sqrt_M) : 0;
+		sqrt_R											<=	a_calc ? (sqrt_M_squared_plus_1_more_than_max ? sqrt_M : sqrt_R) : cmp_value_last;
+		sqrt_M											<=	sqrt_M_wire; // note, sqrt_M is lagging by 1 clock compared to sqrt_L and sqrt_R
+	end
+end
+assign gauss_c_wireholder = {rise_to_fall >>> 1, 16'd0} - 16'd9875 * (rise_to_fall >>> 1); // approximation to rise_to_fall/(2*sqrt(2ln2))
+assign stability_LMR = ~|(sqrt_M_wire ^ sqrt_L); // it will take 2 * $clog2(max - 1) clock cycles after a_ready for this to return 1
+always @(posedge clk) begin
+	if (~rstn) begin
+		gauss_a											<=	0;
+		gauss_b											<=	0;
+		gauss_c											<=	0;
+		refresh											<=	0;
+	end
+	else begin
+		gauss_a											<=	a_calc & stability_LMR ? |((sqrt_R * sqrt_R)[31:0] ^ cmp_values[N_DDS*STORED_SETS-1]) ? sqrt_L : sqrt_R : gauss_a;
+		gauss_b											<=	bc_ready ? zero-to-half + (rise-to-fall >>> 1) : gauss_b;
+		gauss_c											<=	bc_ready ? gauss_c_wireholder[47:16] : gauss_c;
+		refresh											<=	a_calc & stability_LMR & |gauss_c & bc_ready;
+	end
+end
+endmodule
