@@ -38,6 +38,9 @@ module waveform_extractor
 		mem_dout_imag_i	,
 		// m_axis_tdata_o,
 		// mem_addr_o,
+		gauss_output_a,
+		gauss_output_b,
+		gauss_output_c,
 		rstn,
 		clk
 	);
@@ -51,6 +54,9 @@ input										clk;
 input		[159:0]							fifo_dout_i;
 input 		[N_DDS*16-1:0]					mem_dout_real_i;
 input 		[N_DDS*16-1:0]					mem_dout_imag_i;
+output		[31:0]							gauss_output_a;
+output		[31:0]							gauss_output_b;
+output		[31:0]							gauss_output_c;
 // section 1
 reg signed	[15:0]							last_real[0:N_DDS-1];
 reg signed	[15:0]							last_imag[0:N_DDS-1];
@@ -354,4 +360,7 @@ always @(posedge clk) begin
 		refresh											<=	a_calc & stability_LMR & |gauss_c & bc_ready;
 	end
 end
+assign gauss_output_a = gauss_a;
+assign gauss_output_b = gauss_b;
+assign gauss_output_c = gauss_c;
 endmodule
