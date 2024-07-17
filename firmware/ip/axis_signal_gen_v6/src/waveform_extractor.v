@@ -47,6 +47,7 @@ module waveform_extractor
 // parameter N = 16;
 parameter [31:0] N_DDS = 16;
 parameter [31:0] STORED_SETS = 16; // 16 values per set, must be power of 2
+parameter [31:0] CLOG2_DDS_SETS = 8; 
 // unlike the DAC Verilog (async reset), this follows the convention that has been set by the rest of the FPGA (sync reset)
 // section 0: I/O
 input										rstn;
@@ -73,26 +74,27 @@ reg											refresh;
 //wire		[N_DDS*STORED_SETS-1:0]	argmax_equal;
 wire signed	[31:0]							cmp_future_;
 reg signed	[31:0]							cmp_present;
-wire		[N_DDS*STORED_SETS-1:0]			is_meq_to_halfmax;
-reg			[$clog2(N_DDS*STORED_SETS):0]	halfmax_accum[0:N_DDS*STORED_SETS-1];
-wire		[$clog2(N_DDS*STORED_SETS):0]	zero_to_half_tally;
-wire		[$clog2(N_DDS*STORED_SETS):0]	rise_to_fall_tally;
-reg			[$clog2(N_DDS*STORED_SETS):0]	zero_to_half;
-reg			[$clog2(N_DDS*STORED_SETS):0]	rise_to_fall;
+wire			[N_DDS*STORED_SETS-1:0]			is_meq_to_halfmax;
+reg			[CLOG2_DDS_SETS:0]	halfmax_accum[0:N_DDS*STORED_SETS-1];
+wire			[CLOG2_DDS_SETS:0]	zero_to_half_tally;
+wire			[CLOG2_DDS_SETS:0]	rise_to_fall_tally;
+reg			[CLOG2_DDS_SETS:0]	zero_to_half;
+reg			[CLOG2_DDS_SETS:0]	rise_to_fall;
 // section 5: controls
 reg											bc_ready;
 reg											a_ready;
 reg											a_calc;
-reg 		[31:0]							sqrt_L;
-reg 		[31:0]							sqrt_R;
-reg 		[31:0]							sqrt_M;
+reg 			[31:0]							sqrt_L;
+reg 			[31:0]							sqrt_R;
+reg 			[31:0]							sqrt_M;
 wire 		[31:0]							sqrt_M_wire;
 wire 		[63:0]							sqrt_M_squared_plus_1;
+wire 		[63:0]							sqrt_R_squared;
 wire 										sqrt_M_squared_plus_1_more_than_max;
 wire 										stability_LMR;
-reg 		[31:0]							gauss_a;
-reg 		[31:0]							gauss_b;
-reg 		[31:0]							gauss_c;
+reg 			[31:0]							gauss_a;
+reg 			[31:0]							gauss_b;
+reg 			[31:0]							gauss_c;
 wire 		[47:0]							gauss_c_wireholder;
 
 // 	THE GOAL: extract a, b, c of y = a * math.exp(-(x - b)^2 / (2c^2))
@@ -102,20 +104,20 @@ wire 		[47:0]							gauss_c_wireholder;
 
 // section 1 "assignment" - long form
 generate 
-genvar i;
-	for (i=0; i<N_DDS; i=i+1) begin :
+genvar i_a;
+	for (i_a=0; i_a<N_DDS; i_a=i_a+1) begin : section_1
 		always @(posedge clk) begin
 			if (~rstn) begin
-				last_abr2[i]						<=	0;
-				last_real[i]						<=	0;
-				last_imag[i]						<=	0;
-				last_abi2[i]						<=	0;
+				last_abr2[i_a]						<=	0;
+				last_real[i_a]						<=	0;
+				last_imag[i_a]						<=	0;
+				last_abi2[i_a]						<=	0;
 			end
 			else begin
-				last_real[i]						<=	mem_dout_real_i		[i*16 +: 16];
-				last_imag[i]						<=	mem_dout_imag_i		[i*16 +: 16];
-				last_abr2[i]						<=	last_real[i] * last_real[i];
-				last_abi2[i]						<=	last_imag[i] * last_imag[i];
+				last_real[i_a]						<=	mem_dout_real_i		[i_a*16 +: 16];
+				last_imag[i_a]						<=	mem_dout_imag_i		[i_a*16 +: 16];
+				last_abr2[i_a]						<=	last_real[i_a] * last_real[i_a];
+				last_abi2[i_a]						<=	last_imag[i_a] * last_imag[i_a];
 				// yes it says signed, therefore we expect last_ab#2[i]'s MSB to be 0
 			end
 		end
@@ -123,51 +125,51 @@ genvar i;
 endgenerate
 // section 2 "assignment" - short form
 generate
-genvar i, j;
-	for (i=0; i<STORED_SETS; i=i+1) begin :
-		for (j=0; j<N_DDS; j=j+1) begin :
-			if (i==0) begin
+genvar i_b, j_b;
+	for (i_b=0; i_b<STORED_SETS; i_b=i_b+1) begin : section_2_0
+		for (j_b=0; j_b<N_DDS; j_b=j_b+1) begin : section_2_1
+			if (i_b==0) begin
 				always @(posedge clk) begin
-					stored_values[i*N_DDS + j]		<=	~rstn ? 0 : last_abr2[j] + last_abi2[j]
+					stored_values[i_b*N_DDS + j_b]		<=	~rstn ? 0 : last_abr2[j_b] + last_abi2[j_b];
 				end
 			end
 			else begin
 				always @(posedge clk) begin
-					stored_values[i*N_DDS + j]		<=	~rstn ? 0 : stored_values[(i-1)*N_DDS + j]
+					stored_values[i_b*N_DDS + j_b]		<=	~rstn ? 0 : stored_values[(i_b-1)*N_DDS + j_b];
 				end
 			end
 		end
 	end
 endgenerate
 generate
-genvar i;
-	for (i=0; i<N_DDS*STORED_SETS; i=i+1) begin :
+genvar i_c;
+	for (i_c=0; i_c<N_DDS*STORED_SETS; i_c=i_c+1) begin : section_2_2
 		latency_reg
 			#(
-				.N(1 + $clog2(N_DDS*STORED_SETS)),
+				.N(1 + CLOG2_DDS_SETS),
 				.B(32)
 			)
 			stored_values_la_i
 			(
 				.rstn	(rstn				),
 				.clk	(clk				),
-				.din	(stored_values[i]	),
-				.dout	(stored_values_la[i]) // takes 3 + 9 clock cycles for data to get here
+				.din	(stored_values[i_c]	),
+				.dout	(stored_values_la[i_c]) // takes 3 + 9 clock cycles for data to get here
 			);
 	end
 endgenerate
 // section 3 "assignment" - long form
 generate
-genvar i;
-	for (i=0; i<N_DDS*STORED_SETS/2; i=i+1) begin :
+genvar i_d;
+	for (i_d=0; i_d<N_DDS*STORED_SETS/2; i_d=i_d+1) begin : section_3
 		always @(posedge clk) begin
 			if (~rstn | refresh) begin
-				cmp_values[i]						<=	0;
-				cmp_values[N_DDS*STORED_SETS/2+i]	<=	0;
+				cmp_values[i_d]						<=	0;
+				cmp_values[N_DDS*STORED_SETS/2+i_d]	<=	0;
 			end
 			else begin
-				cmp_values[i]						<=	(stored_values[2 * i] - stored_values[2 * i + 1])[31] ? stored_values[2 * i + 1] : stored_values[2 * i];
-				cmp_values[N_DDS*STORED_SETS/2+i]	<=	(cmp_values[2 * i] - cmp_values[2 * i + 1])[31] ? cmp_values[2 * i + 1] : cmp_values[2 * i];
+				cmp_values[i_d]						<=	stored_values[2 * i_d + 1] > stored_values[2 * i_d] ? stored_values[2 * i_d + 1] : stored_values[2 * i_d];
+				cmp_values[N_DDS*STORED_SETS/2+i_d]	<=	cmp_values[2 * i_d + 1] > cmp_values[2 * i_d] ? cmp_values[2 * i_d + 1] : cmp_values[2 * i_d];
 			end
 		end
 		/*
@@ -241,21 +243,21 @@ After this point, in 3 + ^9^ = $12$ clock cycles, we have:
 */
 // section 4 "assignment" - long form
 generate
-genvar i;
-	for (i=0; i<N_DDS*STORED_SETS/2; i=i+1) begin :
+genvar i_e;
+	for (i_e=0; i_e<N_DDS*STORED_SETS/2; i_e=i_e+1) begin : section_4_0
 		// the reason to do is_meq_than_halfmax (y - max(y)/2 has a MSB of 0) instead of more (max(y)/2 - y has a MSB of 1):
 		//		setting non-strict inequality means &is_more_than_halfmax is 1 if all y == max(y)/2 (i.e. y = 0)
 		//		allowing zero_to_half_tally to begin from 0
-		assign is_meq_to_halfmax[2*i] = ~(stored_values_la[2*i] - (cmp_values[N_DDS*STORED_SETS - 1] >>> 1))[31]
-		assign is_meq_to_halfmax[2*i + 1] = ~(stored_values_la[2*i + 1] - (cmp_values[N_DDS*STORED_SETS - 1] >>> 1))[31]
+		assign is_meq_to_halfmax[2*i_e] = ~(stored_values_la[2*i_e] < (cmp_values[N_DDS*STORED_SETS - 1] >>> 1));
+		assign is_meq_to_halfmax[2*i_e + 1] = ~(stored_values_la[2*i_e + 1] < (cmp_values[N_DDS*STORED_SETS - 1] >>> 1));
 		always @(posedge clk) begin
 			if (~rstn | refresh) begin
-				halfmax_accum[i]						<=	0;
-				halfmax_accum[N_DDS*STORED_SETS/2+i]	<=	0;
+				halfmax_accum[i_e]						<=	0;
+				halfmax_accum[N_DDS*STORED_SETS/2+i_e]	<=	0;
 			end
 			else begin
-				halfmax_accum[i]						<=	is_meq_to_halfmax[2*i] + is_meq_to_halfmax[2*i + 1];
-				halfmax_accum[N_DDS*STORED_SETS/2+i]	<=	halfmax_accum[2*i] + halfmax_accum[2*i + 1];
+				halfmax_accum[i_e]						<=	is_meq_to_halfmax[2*i_e] + is_meq_to_halfmax[2*i_e + 1];
+				halfmax_accum[N_DDS*STORED_SETS/2+i_e]	<=	halfmax_accum[2*i_e] + halfmax_accum[2*i_e + 1];
 			end
 		end
 	end
@@ -275,7 +277,7 @@ latency_reg
 	);
 latency_reg
 	#(
-		.N($clog2(N_DDS*STORED_SETS) - 2), // not a typo, I need the data ^9^ - 2 cycles later in order to "peek the future"
+		.N(CLOG2_DDS_SETS - 2), // not a typo, I need the data ^9^ - 2 cycles later in order to "peek the future"
 		.B(32)
 	)
 	cmp_values_la_0
@@ -289,7 +291,7 @@ latency_reg
 assign rise_to_fall_tally = halfmax_accum[N_DDS*STORED_SETS/2 - 2]; 	
 // starting value of rise_to_fall_tally is 256 (because max(y) = 0 means y >= max(y)/2 for all 256 values of y)
 // therefore, rise_to_fall's update is safeguarded by a criteria to update only when the current maximum is not 0
-assign zero_to_half_tally = {1'b1, $clog2(N_DDS*STORED_SETS)'d0} - halfmax_accum[N_DDS*STORED_SETS/2 - 2];
+assign zero_to_half_tally = {1'b0, ~halfmax_accum[N_DDS*STORED_SETS/2 - 2][CLOG2_DDS_SETS-2:0]} + 1;
 always @(posedge clk) begin
 	if (~rstn | refresh) begin
 		zero_to_half									<=	0;
@@ -330,7 +332,8 @@ end
 // to fix sqrt(4) == 1, we bitwise-nor (sqrt_R)^2 ^ 4, which returns 1 if both are equal
 // at that point, it's obvious which one is the square root (sqrt_R if equal, otherwise sqrt_L)
 assign sqrt_M_squared_plus_1 = sqrt_M * sqrt_M + 1;
-assign sqrt_M_squared_plus_1_more_than_max = |sqrt_M_squared_plus_1[63:32] | (cmp_value_last - sqrt_M_squared_plus_1[31:0])[31];
+assign sqrt_M_squared_plus_1_more_than_max = |sqrt_M_squared_plus_1[63:32] | (cmp_value_last < sqrt_M_squared_plus_1[31:0]);
+assign sqrt_R_squared = sqrt_R * sqrt_R;
 assign sqrt_M_wire = (sqrt_L + sqrt_R) >>> 1;
 always @(posedge clk) begin
 	if (~rstn | refresh | ~a_ready) begin
@@ -354,8 +357,8 @@ always @(posedge clk) begin
 		refresh											<=	0;
 	end
 	else begin
-		gauss_a											<=	a_calc & stability_LMR ? |((sqrt_R * sqrt_R)[31:0] ^ cmp_values[N_DDS*STORED_SETS-1]) ? sqrt_L : sqrt_R : gauss_a;
-		gauss_b											<=	bc_ready ? zero-to-half + (rise-to-fall >>> 1) : gauss_b;
+		gauss_a											<=	a_calc & stability_LMR ? (|(sqrt_R_squared[31:0] ^ cmp_values[N_DDS*STORED_SETS-1]) ? sqrt_L : sqrt_R) : gauss_a;
+		gauss_b											<=	bc_ready ? zero_to_half + (rise_to_fall >>> 1) : gauss_b;
 		gauss_c											<=	bc_ready ? gauss_c_wireholder[47:16] : gauss_c;
 		refresh											<=	a_calc & stability_LMR & |gauss_c & bc_ready;
 	end

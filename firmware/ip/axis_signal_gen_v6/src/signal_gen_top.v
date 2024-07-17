@@ -23,7 +23,10 @@ module signal_gen_top
 
 		// Registers.
 		START_ADDR_REG		,
-		WE_REG
+		WE_REG,
+		gauss_a,
+		gauss_b,
+		gauss_c
 	);
 
 /**************/
@@ -54,6 +57,9 @@ output					s1_axis_tready_o;
 input					m_axis_tready_i;
 output					m_axis_tvalid_o;
 output	[N_DDS*16-1:0]	m_axis_tdata_o;
+output	[31:0]			gauss_a;
+output	[31:0]			gauss_b;
+output	[31:0]			gauss_c;
 
 input   [31:0]  		START_ADDR_REG;
 input           		WE_REG;
@@ -77,6 +83,7 @@ wire	[31:0]			mem_dia;
 wire	[N-1:0]			mem_addrb;
 wire	[N_DDS*16-1:0]	mem_dob_real;
 wire	[N_DDS*16-1:0]	mem_dob_imag;
+
 
 /**********************/
 /* Begin Architecture */
@@ -234,7 +241,29 @@ signal_gen
 		.m_axis_tvalid_o	(m_axis_tvalid_o	),
 		.m_axis_tdata_o		(m_axis_tdata_o		)
 	);
+waveform_extractor 
+	#(
+		.N_DDS	(N_DDS	),
+		.STORED_SETS	(16),
+		.CLOG2_DDS_SETS	(8)
+	)
+	waveform_extractor_i
+	(
+		// Fifo interface.
+		.fifo_dout_i		(fifo_dout			),
 
+		// Memory interface.
+		.mem_dout_real_i	(mem_dob_real		),
+		.mem_dout_imag_i	(mem_dob_imag		),
+
+		// M_AXIS for output.
+		.gauss_output_a		(gauss_a			),
+		.gauss_output_b		(gauss_b			),
+		.gauss_output_c		(gauss_c			),
+		// Reset and clock.
+		.rstn				(aresetn			),
+		.clk				(aclk				)
+	);
 
 // Assign outputs.
 assign s1_axis_tready_o	= ~fifo_full;

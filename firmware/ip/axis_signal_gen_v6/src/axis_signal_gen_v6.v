@@ -52,7 +52,10 @@ module axis_signal_gen_v6
 		// AXIS Master for output.
 		m_axis_tready	,
 		m_axis_tvalid	,
-		m_axis_tdata
+		m_axis_tdata,
+		gauss_a,
+		gauss_b,
+		gauss_c
 	);
 
 /**************/
@@ -116,6 +119,9 @@ output	[N_DDS*16-1:0]	m_axis_tdata;
 // Registers.
 wire	[31:0]			START_ADDR_REG;
 wire					WE_REG;
+output	[31:0]			gauss_a;
+output	[31:0]			gauss_b;
+output	[31:0]			gauss_c;
 
 
 /**********************/
@@ -191,7 +197,10 @@ signal_gen_top
 
 		// Registers.
 		.START_ADDR_REG		(START_ADDR_REG		),
-		.WE_REG				(WE_REG				)
+		.WE_REG				(WE_REG				),
+		.gauss_a			(gauss_a			),
+		.gauss_b			(gauss_b			),
+		.gauss_c			(gauss_c			)
 	);
 
 endmodule
