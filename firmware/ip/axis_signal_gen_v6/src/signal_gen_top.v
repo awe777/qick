@@ -26,7 +26,12 @@ module signal_gen_top
 		WE_REG,
 		gauss_a,
 		gauss_b,
-		gauss_c
+		gauss_c,
+		gauss_4,
+		gauss_3,
+		gauss_2,
+		gauss_1,
+		gauss_0
 	);
 
 /**************/
@@ -60,6 +65,11 @@ output	[N_DDS*16-1:0]	m_axis_tdata_o;
 output	[31:0]			gauss_a;
 output	[31:0]			gauss_b;
 output	[31:0]			gauss_c;
+output	[31:0]			gauss_4;
+output	[31:0]			gauss_3;
+output	[31:0]			gauss_2;
+output	[31:0]			gauss_1;
+output	[31:0]			gauss_0;
 
 input   [31:0]  		START_ADDR_REG;
 input           		WE_REG;
@@ -74,7 +84,7 @@ wire					fifo_rd_en;
 wire	[159:0]			fifo_dout;
 wire					fifo_full;
 wire					fifo_empty;
-
+wire	[7:0]			status_flag;
 // Memory.
 wire	[N_DDS-1:0]		mem_ena;
 wire					mem_wea;
@@ -250,7 +260,6 @@ waveform_extractor
 	waveform_extractor_i
 	(
 		// Fifo interface.
-		.fifo_dout_i		(fifo_dout			),
 
 		// Memory interface.
 		.mem_dout_real_i	(mem_dob_real		),
@@ -260,6 +269,7 @@ waveform_extractor
 		.gauss_output_a		(gauss_a			),
 		.gauss_output_b		(gauss_b			),
 		.gauss_output_c		(gauss_c			),
+		.status_flag		(status_flag		),
 		// Reset and clock.
 		.rstn				(aresetn			),
 		.clk				(aclk				)
@@ -267,6 +277,18 @@ waveform_extractor
 
 // Assign outputs.
 assign s1_axis_tready_o	= ~fifo_full;
+//Format of waveform interface:
+// |------------|-------|---------|------|------------|------------|------------|-----------|----------|----------|----------|---------|
+// | 159 .. 149 |   148 |     147 |  146 | 145 .. 144 | 143 .. 128 | 127 .. 112 | 111 .. 96 | 95 .. 80 | 79 .. 64 | 63 .. 32 | 31 .. 0 |
+// |------------|-------|---------|------|------------|------------|------------|-----------|----------|----------|----------|---------|
+// |       xxxx | phrst | stdysel | mode |     outsel |      nsamp |       xxxx |      gain |     xxxx |     addr |    phase |    freq |
+// |------------|-------|---------|------|------------|------------|------------|-----------|----------|----------|----------|---------|
+// since there are unused waveform interface, might as well use funny words as placeholder + proof of working memory assignment
+assign gauss_4 = {status_flag, fifo_dout[151:128]};
+assign gauss_3 = {16'hdead, fifo_dout[111:96]};
+assign gauss_2 = {16'hbeef, fifo_dout[79:64]};
+assign gauss_1 = fifo_dout[63:32];
+assign gauss_0 = fifo_dout[31:0];
 
 endmodule
 

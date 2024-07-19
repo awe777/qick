@@ -55,7 +55,12 @@ module axis_signal_gen_v6
 		m_axis_tdata,
 		gauss_a,
 		gauss_b,
-		gauss_c
+		gauss_c,
+		gauss_4,
+		gauss_3,
+		gauss_2,
+		gauss_1,
+		gauss_0
 	);
 
 /**************/
@@ -122,7 +127,11 @@ wire					WE_REG;
 output	[31:0]			gauss_a;
 output	[31:0]			gauss_b;
 output	[31:0]			gauss_c;
-
+output	[31:0]			gauss_4;
+output	[31:0]			gauss_3;
+output	[31:0]			gauss_2;
+output	[31:0]			gauss_1;
+output	[31:0]			gauss_0;
 
 /**********************/
 /* Begin Architecture */
@@ -200,7 +209,12 @@ signal_gen_top
 		.WE_REG				(WE_REG				),
 		.gauss_a			(gauss_a			),
 		.gauss_b			(gauss_b			),
-		.gauss_c			(gauss_c			)
+		.gauss_c			(gauss_c			),
+		.gauss_4			(gauss_4			),
+		.gauss_3			(gauss_3			),
+		.gauss_2			(gauss_2			),
+		.gauss_1			(gauss_1			),
+		.gauss_0			(gauss_0			)
 	);
 
 endmodule

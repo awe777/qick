@@ -33,7 +33,6 @@ unsigned int isqrt(unsigned int y)
 */
 module waveform_extractor 
 	(
-		fifo_dout_i		,
 		mem_dout_real_i	,
 		mem_dout_imag_i	,
 		// m_axis_tdata_o,
@@ -41,6 +40,7 @@ module waveform_extractor
 		gauss_output_a,
 		gauss_output_b,
 		gauss_output_c,
+		status_flag,
 		rstn,
 		clk
 	);
@@ -52,12 +52,12 @@ parameter [31:0] CLOG2_DDS_SETS = 8;
 // section 0: I/O
 input										rstn;
 input										clk;
-input		[159:0]							fifo_dout_i;
 input 		[N_DDS*16-1:0]					mem_dout_real_i;
 input 		[N_DDS*16-1:0]					mem_dout_imag_i;
 output		[31:0]							gauss_output_a;
 output		[31:0]							gauss_output_b;
 output		[31:0]							gauss_output_c;
+output		[7:0]							status_flag;
 // section 1
 reg signed	[15:0]							last_real[0:N_DDS-1];
 reg signed	[15:0]							last_imag[0:N_DDS-1];
@@ -88,15 +88,23 @@ reg 			[31:0]							sqrt_L;
 reg 			[31:0]							sqrt_R;
 reg 			[31:0]							sqrt_M;
 wire 		[31:0]							sqrt_M_wire;
-wire 		[63:0]							sqrt_M_squared_plus_1;
-wire 		[63:0]							sqrt_R_squared;
+//wire 		[63:0]							sqrt_M_squared_plus_1;
+reg 			[63:0]							sqrt_M_squared_plus_1;
+//wire 		[63:0]							sqrt_R_squared;
+reg 			[63:0]							sqrt_R_squared;
 wire 										sqrt_M_squared_plus_1_more_than_max;
 wire 										stability_LMR;
 reg 			[31:0]							gauss_a;
 reg 			[31:0]							gauss_b;
 reg 			[31:0]							gauss_c;
+reg											LMR_clock;
 wire 		[47:0]							gauss_c_wireholder;
-
+// section 6: debug
+reg											last_cmp_reg_not_zero; // cmp_values[N_DDS*STORED_SETS - 1]
+reg											half_max_reg_not_zero; // halfmax_accum[N_DDS*STORED_SETS/2 - 2]
+reg											cmp_value_last_match_; // cmp_value_last
+reg											cmp_future_match_last; // cmp_future_
+reg 			[3:0]							past_checks;
 // 	THE GOAL: extract a, b, c of y = a * math.exp(-(x - b)^2 / (2c^2))
 //	a is maximum height
 //	b is delay offset
@@ -300,7 +308,7 @@ always @(posedge clk) begin
 	end
 	else begin
 		zero_to_half									<=	~|(cmp_future_ ^ cmp_present) & (zero_to_half < zero_to_half_tally) ? zero_to_half_tally : zero_to_half;
-		rise_to_fall									<=	|(cmp_present) & (rise_to_fall < rise_to_fall_tally) ? rise_to_fall_tally : rise_to_fall;
+		rise_to_fall									<=	~|(cmp_future_ ^ cmp_present) & (rise_to_fall < rise_to_fall_tally) ? rise_to_fall_tally : rise_to_fall;
 		cmp_present										<=	cmp_future_;
 		// both zero_to_half and rise_to_fall only changes if the tally increases while its conditions are met
 		// zero_to_half only can change if the maximum value stabilizes
@@ -320,31 +328,55 @@ always @(posedge clk) begin
 		bc_ready										<=	0;
 		a_ready											<=	0;
 		a_calc											<=	0;
+		LMR_clock										<=	0;
+		last_cmp_reg_not_zero							<=	0;
+		half_max_reg_not_zero							<=	0;
+		cmp_value_last_match_							<=	0;
+		cmp_future_match_last							<=	0;
 	end
 	else begin
 		bc_ready										<=	|(cmp_present) & ~|(cmp_future_ ^ cmp_present) & ~(rise_to_fall < rise_to_fall_tally);
 		a_ready											<=	a_ready | (|(cmp_value_last) & ~|(cmp_value_last ^ cmp_values[N_DDS*STORED_SETS - 1]));
 		a_calc											<=	a_ready;
+		LMR_clock										<=	~LMR_clock;
+		last_cmp_reg_not_zero							<=	|cmp_values[N_DDS*STORED_SETS - 1];
+		half_max_reg_not_zero							<=	|halfmax_accum[N_DDS*STORED_SETS/2 - 2];
+		cmp_value_last_match_							<=	~|(cmp_value_last ^ cmp_values[N_DDS*STORED_SETS - 1]);
+		cmp_future_match_last							<=	~|(cmp_future_ ^ cmp_value_last);
 	end
 end
 // https://en.wikipedia.org/wiki/Integer_square_root
 // technically, this calculates floor(sqrt(max - 1)), because max - 1 + 1 will not overflow and max + 1 might
 // to fix sqrt(4) == 1, we bitwise-nor (sqrt_R)^2 ^ 4, which returns 1 if both are equal
 // at that point, it's obvious which one is the square root (sqrt_R if equal, otherwise sqrt_L)
-assign sqrt_M_squared_plus_1 = sqrt_M * sqrt_M + 1;
+// after update @ 2024/07/19, the squaring wires became a bottleneck
+//assign sqrt_M_squared_plus_1 = sqrt_M * sqrt_M + 1;
 assign sqrt_M_squared_plus_1_more_than_max = |sqrt_M_squared_plus_1[63:32] | (cmp_value_last < sqrt_M_squared_plus_1[31:0]);
-assign sqrt_R_squared = sqrt_R * sqrt_R;
+//assign sqrt_R_squared = sqrt_R * sqrt_R;
 assign sqrt_M_wire = (sqrt_L + sqrt_R) >>> 1;
 always @(posedge clk) begin
 	if (~rstn | refresh | ~a_ready) begin
 		sqrt_L											<=	0;
 		sqrt_R											<=	0;
 		sqrt_M											<=	0;
+		sqrt_M_squared_plus_1							<=	0;
+		sqrt_R_squared									<=	0;
+	end
+	else if (LMR_clock) begin
+		// LMR_clock == 1: update (sqrt(M))^2 +1 and (sqrt(R))^2
+		sqrt_L											<=	sqrt_L;
+		sqrt_R											<=	sqrt_R;
+		sqrt_M											<=	sqrt_M;
+		sqrt_M_squared_plus_1							<=	sqrt_M * sqrt_M + 1;
+		sqrt_R_squared									<=	sqrt_R * sqrt_R;
 	end
 	else begin
+		// LMR_clock == 0:  update LMR
 		sqrt_L											<=	a_calc ? (sqrt_M_squared_plus_1_more_than_max ? sqrt_L : sqrt_M) : 0;
 		sqrt_R											<=	a_calc ? (sqrt_M_squared_plus_1_more_than_max ? sqrt_M : sqrt_R) : cmp_value_last;
 		sqrt_M											<=	sqrt_M_wire; // note, sqrt_M is lagging by 1 clock compared to sqrt_L and sqrt_R
+		sqrt_M_squared_plus_1							<=	sqrt_M_squared_plus_1;
+		sqrt_R_squared									<=	sqrt_R_squared;
 	end
 end
 assign gauss_c_wireholder = {rise_to_fall >>> 1, 16'd0} - 16'd9875 * (rise_to_fall >>> 1); // approximation to rise_to_fall/(2*sqrt(2ln2))
@@ -355,15 +387,18 @@ always @(posedge clk) begin
 		gauss_b											<=	0;
 		gauss_c											<=	0;
 		refresh											<=	0;
+		past_checks										<= 0;
 	end
 	else begin
 		gauss_a											<=	a_calc & stability_LMR ? (|(sqrt_R_squared[31:0] ^ cmp_values[N_DDS*STORED_SETS-1]) ? sqrt_L : sqrt_R) : gauss_a;
 		gauss_b											<=	bc_ready ? zero_to_half + (rise_to_fall >>> 1) : gauss_b;
 		gauss_c											<=	bc_ready ? gauss_c_wireholder[47:16] : gauss_c;
 		refresh											<=	a_calc & stability_LMR & |gauss_c & bc_ready;
+		past_checks										<=	refresh ? {last_cmp_reg_not_zero, half_max_reg_not_zero, cmp_value_last_match_, cmp_future_match_last} : past_checks;
 	end
 end
 assign gauss_output_a = gauss_a;
 assign gauss_output_b = gauss_b;
 assign gauss_output_c = gauss_c;
+assign status_flag = {past_checks, last_cmp_reg_not_zero, half_max_reg_not_zero, cmp_value_last_match_, cmp_future_match_last};
 endmodule
