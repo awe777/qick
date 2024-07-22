@@ -40,8 +40,9 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
+`default_nettype none
 // }}}
-module	easyaxil_nowrite #(
+module	easyaxil #(
 		// {{{
 		//
 		// Size of the AXI-lite bus.  These are fixed, since 1) AXI-lite
@@ -49,7 +50,7 @@ module	easyaxil_nowrite #(
 		// we only ever have 4 configuration words.
 		parameter	C_AXI_ADDR_WIDTH = 4,
 		localparam	C_AXI_DATA_WIDTH = 32,
-		//parameter [0:0]	OPT_SKIDBUFFER = 1'b0,
+		// parameter [0:0]	OPT_SKIDBUFFER = 1'b0,
 		parameter [0:0]	OPT_LOWPOWER = 0
 		// }}}
 	) (
@@ -60,7 +61,7 @@ module	easyaxil_nowrite #(
 		input	wire					S_AXI_AWVALID,
 		output	wire					S_AXI_AWREADY,
 		input	wire	[C_AXI_ADDR_WIDTH-1:0]		S_AXI_AWADDR,
-		input	wire	[3:0]				S_AXI_AWPROT,
+		input	wire	[2:0]				S_AXI_AWPROT,
 		//
 		input	wire					S_AXI_WVALID,
 		output	wire					S_AXI_WREADY,
@@ -74,14 +75,12 @@ module	easyaxil_nowrite #(
 		input	wire					S_AXI_ARVALID,
 		output	wire					S_AXI_ARREADY,
 		input	wire	[C_AXI_ADDR_WIDTH-1:0]		S_AXI_ARADDR,
-		input	wire	[3:0]				S_AXI_ARPROT,
+		input	wire	[2:0]				S_AXI_ARPROT,
 		//
 		output	wire					S_AXI_RVALID,
 		input	wire					S_AXI_RREADY,
 		output	wire	[C_AXI_DATA_WIDTH-1:0]		S_AXI_RDATA,
-		output	wire	[1:0]				S_AXI_RRESP,
-		//
-		input	wire	[8*C_AXI_DATA_WIDTH-1:0]	gauss_input
+		output	wire	[1:0]				S_AXI_RRESP
 		// }}}
 	);
 
@@ -91,7 +90,7 @@ module	easyaxil_nowrite #(
 	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
-	localparam	ADDRLSB = $clog2(C_AXI_DATA_WIDTH)-4;
+	localparam	ADDRLSB = $clog2(C_AXI_DATA_WIDTH)-3;
 
 	wire	i_reset = !S_AXI_ARESETN;
 
@@ -107,9 +106,8 @@ module	easyaxil_nowrite #(
 	reg	[C_AXI_DATA_WIDTH-1:0]	axil_read_data;
 	reg				axil_read_valid;
 
-	reg	[31:0]	r0, r1, r2, r3, r4, r5, r6, r7;
-	wire	[31:0]	wskd_r0, wskd_r1, wskd_r2, wskd_r3, wskd_r4, wskd_r5, wskd_r6, wskd_r7;
-	wire	[C_AXI_DATA_WIDTH-1:0]	gauss_a, gauss_b, gauss_c, gauss_4, gauss_3, gauss_2, gauss_1, gauss_0;
+	reg	[31:0]	r0, r1, r2, r3;
+	wire	[31:0]	wskd_r0, wskd_r1, wskd_r2, wskd_r3;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -124,7 +122,8 @@ module	easyaxil_nowrite #(
 	//
 	// {{{
 
-	generate //if (OPT_SKIDBUFFER)
+	generate 
+	// if (OPT_SKIDBUFFER)
 	// begin : SKIDBUFFER_WRITE
 	// 	// {{{
 	// 	wire	awskd_valid, wskd_valid;
@@ -195,7 +194,8 @@ module	easyaxil_nowrite #(
 	//
 	// {{{
 
-	generate //if (OPT_SKIDBUFFER)
+	generate 
+	// if (OPT_SKIDBUFFER)
 	// begin : SKIDBUFFER_READ
 	// 	// {{{
 	// 	wire	arskd_valid;
@@ -255,19 +255,11 @@ module	easyaxil_nowrite #(
 	assign	wskd_r1 = apply_wstrb(r1, wskd_data, wskd_strb);
 	assign	wskd_r2 = apply_wstrb(r2, wskd_data, wskd_strb);
 	assign	wskd_r3 = apply_wstrb(r3, wskd_data, wskd_strb);
-	assign	wskd_r4 = apply_wstrb(r4, wskd_data, wskd_strb);
-	assign	wskd_r5 = apply_wstrb(r5, wskd_data, wskd_strb);
-	assign	wskd_r6 = apply_wstrb(r6, wskd_data, wskd_strb);
-	assign	wskd_r7 = apply_wstrb(r7, wskd_data, wskd_strb);
 
 	initial	r0 = 0;
 	initial	r1 = 0;
 	initial	r2 = 0;
 	initial	r3 = 0;
-	initial	r4 = 0;
-	initial	r5 = 0;
-	initial	r6 = 0;
-	initial	r7 = 0;
 	always @(posedge S_AXI_ACLK)
 	if (i_reset)
 	begin
@@ -275,20 +267,14 @@ module	easyaxil_nowrite #(
 		r1 <= 0;
 		r2 <= 0;
 		r3 <= 0;
-		r4 <= 0;
-		r5 <= 0;
-		r6 <= 0;
-		r7 <= 0;
-	end else 
+	end else if (axil_write_ready)
 	begin
-		r0 <= gauss_a;
-		r1 <= gauss_b;
-		r2 <= gauss_c;
-		r3 <= gauss_4;
-		r4 <= gauss_3;
-		r5 <= gauss_2;
-		r6 <= gauss_1;
-		r7 <= gauss_0;
+		case(awskd_addr)
+		2'b00:	r0 <= wskd_r0;
+		2'b01:	r1 <= wskd_r1;
+		2'b10:	r2 <= wskd_r2;
+		2'b11:	r3 <= wskd_r3;
+		endcase
 	end
 
 	initial	axil_read_data = 0;
@@ -298,14 +284,10 @@ module	easyaxil_nowrite #(
 	else if (!S_AXI_RVALID || S_AXI_RREADY)
 	begin
 		case(arskd_addr)
-		3'b000:	axil_read_data	<= r0;
-		3'b001:	axil_read_data	<= r1;
-		3'b010:	axil_read_data	<= r2;
-		3'b011:	axil_read_data	<= r3;
-		3'b100:	axil_read_data	<= r4;
-		3'b101:	axil_read_data	<= r5;
-		3'b110:	axil_read_data	<= r6;
-		3'b111:	axil_read_data	<= r7;
+		2'b00:	axil_read_data	<= r0;
+		2'b01:	axil_read_data	<= r1;
+		2'b10:	axil_read_data	<= r2;
+		2'b11:	axil_read_data	<= r3;
 		endcase
 
 		if (OPT_LOWPOWER && !axil_read_ready)
@@ -325,14 +307,7 @@ module	easyaxil_nowrite #(
 		end
 	endfunction
 	// }}}
-	assign gauss_a = gauss_input[255:216];
-	assign gauss_b = gauss_input[215:192];
-	assign gauss_c = gauss_input[191:160];
-	assign gauss_4 = gauss_input[159:128];
-	assign gauss_3 = gauss_input[127:96];
-	assign gauss_2 = gauss_input[95:64];
-	assign gauss_1 = gauss_input[63:32];
-	assign gauss_0 = gauss_input[31:0];
+
 	// Make Verilator happy
 	// {{{
 	// Verilator lint_off UNUSED

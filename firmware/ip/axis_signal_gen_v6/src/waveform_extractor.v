@@ -387,7 +387,7 @@ always @(posedge clk) begin
 		gauss_b											<=	0;
 		gauss_c											<=	0;
 		refresh											<=	0;
-		past_checks										<= 0;
+		past_checks										<=	0;
 	end
 	else begin
 		gauss_a											<=	a_calc & stability_LMR ? (|(sqrt_R_squared[31:0] ^ cmp_values[N_DDS*STORED_SETS-1]) ? sqrt_L : sqrt_R) : gauss_a;
