@@ -53,14 +53,7 @@ module axis_signal_gen_v6
 		m_axis_tready	,
 		m_axis_tvalid	,
 		m_axis_tdata,
-		gauss_a,
-		gauss_b,
-		gauss_c,
-		gauss_4,
-		gauss_3,
-		gauss_2,
-		gauss_1,
-		gauss_0
+		gauss_out
 	);
 
 /**************/
@@ -117,6 +110,7 @@ output					s1_axis_tready;
 input					m_axis_tready;
 output					m_axis_tvalid;
 output	[N_DDS*16-1:0]	m_axis_tdata;
+output	[255:0]			gauss_out;
 
 /********************/
 /* Internal signals */
@@ -124,14 +118,6 @@ output	[N_DDS*16-1:0]	m_axis_tdata;
 // Registers.
 wire	[31:0]			START_ADDR_REG;
 wire					WE_REG;
-output	[31:0]			gauss_a;
-output	[31:0]			gauss_b;
-output	[31:0]			gauss_c;
-output	[31:0]			gauss_4;
-output	[31:0]			gauss_3;
-output	[31:0]			gauss_2;
-output	[31:0]			gauss_1;
-output	[31:0]			gauss_0;
 
 /**********************/
 /* Begin Architecture */
@@ -207,14 +193,14 @@ signal_gen_top
 		// Registers.
 		.START_ADDR_REG		(START_ADDR_REG		),
 		.WE_REG				(WE_REG				),
-		.gauss_a			(gauss_a			),
-		.gauss_b			(gauss_b			),
-		.gauss_c			(gauss_c			),
-		.gauss_4			(gauss_4			),
-		.gauss_3			(gauss_3			),
-		.gauss_2			(gauss_2			),
-		.gauss_1			(gauss_1			),
-		.gauss_0			(gauss_0			)
+		.gauss_a			(gauss_out[255:216]	),
+		.gauss_b			(gauss_out[215:192]	),
+		.gauss_c			(gauss_out[191:160]	),
+		.gauss_4			(gauss_out[159:128]	),
+		.gauss_3			(gauss_out[127:96]	),
+		.gauss_2			(gauss_out[95:64]	),
+		.gauss_1			(gauss_out[63:32]	),
+		.gauss_0			(gauss_out[31:0]	)
 	);
 
 endmodule

@@ -87,13 +87,13 @@ module	axil_waveform_register #(
 		input	wire	[255:0]				dac4,
 		input	wire	[255:0]				dac5,
 		input	wire	[255:0]				dac6,
-		input								dac0_clk,
-		input								dac1_clk,
-		input								dac2_clk,
-		input								dac3_clk,
-		input								dac4_clk,
-		input								dac5_clk,
-		input								dac6_clk,
+		input	wire						dac0_clk,
+		input	wire						dac1_clk,
+		input	wire						dac2_clk,
+		input	wire						dac3_clk,
+		input	wire						dac4_clk,
+		input	wire						dac5_clk,
+		input	wire						dac6_clk
 		// }}}
 	);
 
@@ -270,11 +270,11 @@ module	axil_waveform_register #(
 	assign	wskd_r0 = apply_wstrb(r0, wskd_data, wskd_strb);
 	assign	wskd_r1 = apply_wstrb(r1, wskd_data, wskd_strb);
 
-	initial	r0 = 0;
+	initial	r0 = 32'hffffffff;
 	always @(posedge S_AXI_ACLK)
 	if (i_reset)
 	begin
-		r0 <= 0;
+		r0 <= 32'hffffffff;
 	end else if (axil_write_ready)
 	begin
 		case(awskd_addr)
@@ -368,11 +368,11 @@ module	axil_waveform_register #(
 			axil_read_data <= 0;
 	end
 
-	initial	last_value = 0;
+	initial	last_value = 16'hffff;
 	always @(posedge S_AXI_ACLK)
 	if (i_reset)
 	begin
-		last_value <= 0;
+		last_value <= 16'hffff;
 	end else 
 	begin
 		last_value <= r0[31:16];
@@ -388,7 +388,7 @@ module	axil_waveform_register #(
 	end else
 	begin
 		dac0_r <= |(last_value ^ r0[31:16]) & ~dac0_f ? dac0 : dac0_r;
-		dac0_f <= |(last_value ^ r0[31:16])
+		dac0_f <= |(last_value ^ r0[31:16]);
 	end
 	initial	dac1_r = 0;
 	initial	dac1_f = 0;
@@ -400,7 +400,7 @@ module	axil_waveform_register #(
 	end else
 	begin
 		dac1_r <= |(last_value ^ r0[31:16]) & ~dac1_f ? dac1 : dac1_r;
-		dac1_f <= |(last_value ^ r0[31:16])
+		dac1_f <= |(last_value ^ r0[31:16]);
 	end
 	initial	dac2_r = 0;
 	initial	dac2_f = 0;
@@ -412,7 +412,7 @@ module	axil_waveform_register #(
 	end else
 	begin
 		dac2_r <= |(last_value ^ r0[31:16]) & ~dac2_f ? dac2 : dac2_r;
-		dac2_f <= |(last_value ^ r0[31:16])
+		dac2_f <= |(last_value ^ r0[31:16]);
 	end
 	initial	dac3_r = 0;
 	initial	dac3_f = 0;
@@ -424,7 +424,7 @@ module	axil_waveform_register #(
 	end else
 	begin
 		dac3_r <= |(last_value ^ r0[31:16]) & ~dac3_f ? dac3 : dac3_r;
-		dac3_f <= |(last_value ^ r0[31:16])
+		dac3_f <= |(last_value ^ r0[31:16]);
 	end
 	initial	dac4_r = 0;
 	initial	dac4_f = 0;
@@ -436,7 +436,7 @@ module	axil_waveform_register #(
 	end else
 	begin
 		dac4_r <= |(last_value ^ r0[31:16]) & ~dac4_f ? dac4 : dac4_r;
-		dac4_f <= |(last_value ^ r0[31:16])
+		dac4_f <= |(last_value ^ r0[31:16]);
 	end
 	initial	dac5_r = 0;
 	initial	dac5_f = 0;
@@ -448,7 +448,7 @@ module	axil_waveform_register #(
 	end else
 	begin
 		dac5_r <= |(last_value ^ r0[31:16]) & ~dac5_f ? dac5 : dac5_r;
-		dac5_f <= |(last_value ^ r0[31:16])
+		dac5_f <= |(last_value ^ r0[31:16]);
 	end
 	initial	dac6_r = 0;
 	initial	dac6_f = 0;
@@ -460,7 +460,7 @@ module	axil_waveform_register #(
 	end else
 	begin
 		dac6_r <= |(last_value ^ r0[31:16]) & ~dac6_f ? dac6 : dac6_r;
-		dac6_f <= |(last_value ^ r0[31:16])
+		dac6_f <= |(last_value ^ r0[31:16]);
 	end	
 
 	function [C_AXI_DATA_WIDTH-1:0]	apply_wstrb;
