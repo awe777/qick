@@ -74,29 +74,29 @@ reg											refresh;
 //wire		[N_DDS*STORED_SETS-1:0]	argmax_equal;
 wire signed	[31:0]							cmp_future_;
 reg signed	[31:0]							cmp_present;
-wire			[N_DDS*STORED_SETS-1:0]			is_meq_to_halfmax;
+wire		[N_DDS*STORED_SETS-1:0]			is_meq_to_halfmax;
 reg			[CLOG2_DDS_SETS:0]	halfmax_accum[0:N_DDS*STORED_SETS-1];
-wire			[CLOG2_DDS_SETS:0]	zero_to_half_tally;
-wire			[CLOG2_DDS_SETS:0]	rise_to_fall_tally;
+wire		[CLOG2_DDS_SETS:0]	zero_to_half_tally;
+wire		[CLOG2_DDS_SETS:0]	rise_to_fall_tally;
 reg			[CLOG2_DDS_SETS:0]	zero_to_half;
 reg			[CLOG2_DDS_SETS:0]	rise_to_fall;
 // section 5: controls
 reg											bc_ready;
 reg											a_ready;
 reg											a_calc;
-reg 			[31:0]							sqrt_L;
-reg 			[31:0]							sqrt_R;
-reg 			[31:0]							sqrt_M;
+reg 		[31:0]							sqrt_L;
+reg 		[31:0]							sqrt_R;
+reg 		[31:0]							sqrt_M;
 wire 		[31:0]							sqrt_M_wire;
 //wire 		[63:0]							sqrt_M_squared_plus_1;
-reg 			[63:0]							sqrt_M_squared_plus_1;
+reg 		[63:0]							sqrt_M_squared_plus_1;
 //wire 		[63:0]							sqrt_R_squared;
-reg 			[63:0]							sqrt_R_squared;
+reg 		[63:0]							sqrt_R_squared;
 wire 										sqrt_M_squared_plus_1_more_than_max;
 wire 										stability_LMR;
-reg 			[31:0]							gauss_a;
-reg 			[31:0]							gauss_b;
-reg 			[31:0]							gauss_c;
+reg 		[31:0]							gauss_a;
+reg 		[31:0]							gauss_b;
+reg 		[31:0]							gauss_c;
 reg											LMR_clock;
 wire 		[47:0]							gauss_c_wireholder;
 // section 6: debug
@@ -104,7 +104,7 @@ reg											last_cmp_reg_not_zero; // cmp_values[N_DDS*STORED_SETS - 1]
 reg											half_max_reg_not_zero; // halfmax_accum[N_DDS*STORED_SETS/2 - 2]
 reg											cmp_value_last_match_; // cmp_value_last
 reg											cmp_future_match_last; // cmp_future_
-reg 			[3:0]							past_checks;
+reg 		[3:0]							past_checks;
 // 	THE GOAL: extract a, b, c of y = a * math.exp(-(x - b)^2 / (2c^2))
 //	a is maximum height
 //	b is delay offset
