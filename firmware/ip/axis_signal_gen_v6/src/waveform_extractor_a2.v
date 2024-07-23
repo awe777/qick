@@ -1,4 +1,15 @@
-// with the integer square root, failed to meet timing when connected (best is around -0.9 ns TNS)
+/*
+	New stuff:
+	logic [31: 0] a_vect;
+	logic [0 :31] b_vect;
+	logic [63: 0] dword;
+	integer sel;
+	a_vect[ 0 +: 8] // == a_vect[ 7 : 0]
+	a_vect[15 -: 8] // == a_vect[15 : 8]
+	b_vect[ 0 +: 8] // == b_vect[0 : 7]
+	b_vect[15 -: 8] // == b_vect[8 :15]
+	dword[8*sel +: 8] // variable part-select with fixed width
+*/
 /*
 // Integer square root (using binary search)
 unsigned int isqrt(unsigned int y)
@@ -20,7 +31,7 @@ unsigned int isqrt(unsigned int y)
     return L;
 }
 */
-module waveform_extractor 
+module waveform_extractor_a2 // this one does not do integer square root
 	(
 		mem_dout_real_i	,
 		mem_dout_imag_i	,
@@ -64,29 +75,29 @@ reg											refresh;
 wire signed	[31:0]							cmp_future_;
 reg signed	[31:0]							cmp_present;
 wire		[N_DDS*STORED_SETS-1:0]			is_meq_to_halfmax;
-reg			[CLOG2_DDS_SETS:0]	halfmax_accum[0:N_DDS*STORED_SETS-1];
-wire		[CLOG2_DDS_SETS:0]	zero_to_half_tally;
-wire		[CLOG2_DDS_SETS:0]	rise_to_fall_tally;
-reg			[CLOG2_DDS_SETS:0]	zero_to_half;
-reg			[CLOG2_DDS_SETS:0]	rise_to_fall;
+reg			[CLOG2_DDS_SETS:0]				halfmax_accum[0:N_DDS*STORED_SETS-1];
+wire		[CLOG2_DDS_SETS:0]				zero_to_half_tally;
+wire		[CLOG2_DDS_SETS:0]				rise_to_fall_tally;
+reg			[CLOG2_DDS_SETS:0]				zero_to_half;
+reg			[CLOG2_DDS_SETS:0]				rise_to_fall;
 // section 5: controls
 reg											bc_ready;
-reg											a_ready;
-reg											a_calc;
-reg 		[31:0]							sqrt_L;
-reg 		[31:0]							sqrt_R;
-reg 		[31:0]							sqrt_M;
-wire 		[31:0]							sqrt_M_wire;
+//reg											a_ready;
+//reg											a_calc;
+//reg 		[31:0]							sqrt_L;
+//reg 		[31:0]							sqrt_R;
+//reg 		[31:0]							sqrt_M;
+//wire 		[31:0]							sqrt_M_wire;
 //wire 		[63:0]							sqrt_M_squared_plus_1;
-reg 		[63:0]							sqrt_M_squared_plus_1;
+//reg 		[63:0]							sqrt_M_squared_plus_1;
 //wire 		[63:0]							sqrt_R_squared;
-reg 		[63:0]							sqrt_R_squared;
-wire 										sqrt_M_squared_plus_1_more_than_max;
-wire 										stability_LMR;
-reg 		[31:0]							gauss_a;
+//reg 		[63:0]							sqrt_R_squared;
+//wire 										sqrt_M_squared_plus_1_more_than_max;
+//wire 										stability_LMR;
+reg 		[31:0]							gauss_a2;
 reg 		[31:0]							gauss_b;
 reg 		[31:0]							gauss_c;
-reg											LMR_clock;
+//reg											LMR_clock;
 wire 		[47:0]							gauss_c_wireholder;
 // section 6: debug
 reg											last_cmp_reg_not_zero; // cmp_values[N_DDS*STORED_SETS - 1]
@@ -315,9 +326,9 @@ After this point, in 3 + ^9^ + ^9^ - 1 = 20 clock cycles, we have:
 always @(posedge clk) begin
 	if (~rstn | refresh) begin
 		bc_ready										<=	0;
-		a_ready											<=	0;
-		a_calc											<=	0;
-		LMR_clock										<=	0;
+		//a_ready											<=	0;
+		//a_calc											<=	0;
+		//LMR_clock										<=	0;
 		last_cmp_reg_not_zero							<=	0;
 		half_max_reg_not_zero							<=	0;
 		cmp_value_last_match_							<=	0;
@@ -325,9 +336,9 @@ always @(posedge clk) begin
 	end
 	else begin
 		bc_ready										<=	|(cmp_present) & ~|(cmp_future_ ^ cmp_present) & ~(rise_to_fall < rise_to_fall_tally);
-		a_ready											<=	a_ready | (|(cmp_value_last) & ~|(cmp_value_last ^ cmp_values[N_DDS*STORED_SETS - 1]));
-		a_calc											<=	a_ready;
-		LMR_clock										<=	~LMR_clock;
+		//a_ready											<=	a_ready | (|(cmp_value_last) & ~|(cmp_value_last ^ cmp_values[N_DDS*STORED_SETS - 1]));
+		//a_calc											<=	a_ready;
+		//LMR_clock										<=	~LMR_clock;
 		last_cmp_reg_not_zero							<=	|cmp_values[N_DDS*STORED_SETS - 1];
 		half_max_reg_not_zero							<=	|halfmax_accum[N_DDS*STORED_SETS/2 - 2];
 		cmp_value_last_match_							<=	~|(cmp_value_last ^ cmp_values[N_DDS*STORED_SETS - 1]);
@@ -340,53 +351,53 @@ end
 // at that point, it's obvious which one is the square root (sqrt_R if equal, otherwise sqrt_L)
 // after update @ 2024/07/19, the squaring wires became a bottleneck
 //assign sqrt_M_squared_plus_1 = sqrt_M * sqrt_M + 1;
-assign sqrt_M_squared_plus_1_more_than_max = |sqrt_M_squared_plus_1[63:32] | (cmp_value_last < sqrt_M_squared_plus_1[31:0]);
-//assign sqrt_R_squared = sqrt_R * sqrt_R;
-assign sqrt_M_wire = (sqrt_L + sqrt_R) >>> 1;
-always @(posedge clk) begin
-	if (~rstn | refresh | ~a_ready) begin
-		sqrt_L											<=	0;
-		sqrt_R											<=	0;
-		sqrt_M											<=	0;
-		sqrt_M_squared_plus_1							<=	0;
-		sqrt_R_squared									<=	0;
-	end
-	else if (LMR_clock) begin
-		// LMR_clock == 1: update (sqrt(M))^2 +1 and (sqrt(R))^2
-		sqrt_L											<=	sqrt_L;
-		sqrt_R											<=	sqrt_R;
-		sqrt_M											<=	sqrt_M;
-		sqrt_M_squared_plus_1							<=	sqrt_M * sqrt_M + 1;
-		sqrt_R_squared									<=	sqrt_R * sqrt_R;
-	end
-	else begin
-		// LMR_clock == 0:  update LMR
-		sqrt_L											<=	a_calc ? (sqrt_M_squared_plus_1_more_than_max ? sqrt_L : sqrt_M) : 0;
-		sqrt_R											<=	a_calc ? (sqrt_M_squared_plus_1_more_than_max ? sqrt_M : sqrt_R) : cmp_value_last;
-		sqrt_M											<=	sqrt_M_wire; // note, sqrt_M is lagging by 1 clock compared to sqrt_L and sqrt_R
-		sqrt_M_squared_plus_1							<=	sqrt_M_squared_plus_1;
-		sqrt_R_squared									<=	sqrt_R_squared;
-	end
-end
+// assign sqrt_M_squared_plus_1_more_than_max = |sqrt_M_squared_plus_1[63:32] | (cmp_value_last < sqrt_M_squared_plus_1[31:0]);
+// //assign sqrt_R_squared = sqrt_R * sqrt_R;
+// assign sqrt_M_wire = (sqrt_L + sqrt_R) >>> 1;
+// always @(posedge clk) begin
+// 	if (~rstn | refresh | ~a_ready) begin
+// 		sqrt_L											<=	0;
+// 		sqrt_R											<=	0;
+// 		sqrt_M											<=	0;
+// 		sqrt_M_squared_plus_1							<=	0;
+// 		sqrt_R_squared									<=	0;
+// 	end
+// 	else if (LMR_clock) begin
+// 		// LMR_clock == 1: update (sqrt(M))^2 +1 and (sqrt(R))^2
+// 		sqrt_L											<=	sqrt_L;
+// 		sqrt_R											<=	sqrt_R;
+// 		sqrt_M											<=	sqrt_M;
+// 		sqrt_M_squared_plus_1							<=	sqrt_M * sqrt_M + 1;
+// 		sqrt_R_squared									<=	sqrt_R * sqrt_R;
+// 	end
+// 	else begin
+// 		// LMR_clock == 0:  update LMR
+// 		sqrt_L											<=	a_calc ? (sqrt_M_squared_plus_1_more_than_max ? sqrt_L : sqrt_M) : 0;
+// 		sqrt_R											<=	a_calc ? (sqrt_M_squared_plus_1_more_than_max ? sqrt_M : sqrt_R) : cmp_value_last;
+// 		sqrt_M											<=	sqrt_M_wire; // note, sqrt_M is lagging by 1 clock compared to sqrt_L and sqrt_R
+// 		sqrt_M_squared_plus_1							<=	sqrt_M_squared_plus_1;
+// 		sqrt_R_squared									<=	sqrt_R_squared;
+// 	end
+// end
 assign gauss_c_wireholder = {rise_to_fall >>> 1, 16'd0} - 16'd9875 * (rise_to_fall >>> 1); // approximation to rise_to_fall/(2*sqrt(2ln2))
-assign stability_LMR = ~|(sqrt_M_wire ^ sqrt_L); // it will take 2 * $clog2(max - 1) clock cycles after a_ready for this to return 1
+//assign stability_LMR = ~|(sqrt_M_wire ^ sqrt_L); // it will take 2 * $clog2(max - 1) clock cycles after a_ready for this to return 1
 always @(posedge clk) begin
 	if (~rstn) begin
-		gauss_a											<=	0;
+		gauss_a2										<=	0;
 		gauss_b											<=	0;
 		gauss_c											<=	0;
 		refresh											<=	0;
 		past_checks										<=	0;
 	end
 	else begin
-		gauss_a											<=	a_calc & stability_LMR ? (|(sqrt_R_squared[31:0] ^ cmp_values[N_DDS*STORED_SETS-1]) ? sqrt_L : sqrt_R) : gauss_a;
+		gauss_a2										<=	bc_ready ? cmp_values[N_DDS*STORED_SETS-1] : gauss_a2;
 		gauss_b											<=	bc_ready ? zero_to_half + (rise_to_fall >>> 1) : gauss_b;
 		gauss_c											<=	bc_ready ? gauss_c_wireholder[47:16] : gauss_c;
-		refresh											<=	a_calc & stability_LMR & |gauss_c & bc_ready;
+		refresh											<=	|gauss_c & bc_ready;
 		past_checks										<=	refresh ? {last_cmp_reg_not_zero, half_max_reg_not_zero, cmp_value_last_match_, cmp_future_match_last} : past_checks;
 	end
 end
-assign gauss_output_a = gauss_a;
+assign gauss_output_a = gauss_a2;
 assign gauss_output_b = gauss_b;
 assign gauss_output_c = gauss_c;
 assign status_flag = {past_checks, last_cmp_reg_not_zero, half_max_reg_not_zero, cmp_value_last_match_, cmp_future_match_last};

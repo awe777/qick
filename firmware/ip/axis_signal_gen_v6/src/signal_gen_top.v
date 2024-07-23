@@ -251,7 +251,7 @@ signal_gen
 		.m_axis_tvalid_o	(m_axis_tvalid_o	),
 		.m_axis_tdata_o		(m_axis_tdata_o		)
 	);
-waveform_extractor 
+waveform_extractor_a2 
 	#(
 		.N_DDS	(N_DDS	),
 		.STORED_SETS	(16),
