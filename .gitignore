@@ -69,6 +69,8 @@ Temporary Items
 *~
 .*.swp
 *.lnk
+.vscode/
+*master.xdc
 
 !/.gitignore
 !/README.md
