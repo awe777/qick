@@ -1,19 +1,19 @@
-#set_property PACKAGE_PIN G15       [get_ports "PMOD0_0_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L12N_AD8N_88
-#set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_0_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L12N_AD8N_88
-#set_property PACKAGE_PIN G16       [get_ports "PMOD0_1_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L12P_AD8P_88
-#set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_1_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L12P_AD8P_88
-#set_property PACKAGE_PIN H14       [get_ports "PMOD0_2_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L11N_AD9N_88
-#set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_2_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L11N_AD9N_88
-#set_property PACKAGE_PIN H15       [get_ports "PMOD0_3_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L11P_AD9P_88
-#set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_3_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L11P_AD9P_88
-#set_property PACKAGE_PIN G13       [get_ports "PMOD0_4_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L10N_AD10N_88
-#set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_4_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L10N_AD10N_88
-#set_property PACKAGE_PIN H13       [get_ports "PMOD0_5_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L10P_AD10P_88
-#set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_5_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L10P_AD10P_88
-#set_property PACKAGE_PIN J13       [get_ports "PMOD0_6_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L9N_AD11N_88
-#set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_6_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L9N_AD11N_88
-#set_property PACKAGE_PIN J14       [get_ports "PMOD0_7_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L9P_AD11P_88
-#set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_7_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L9P_AD11P_88
+set_property PACKAGE_PIN G15       [get_ports "PMOD0_0_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L12N_AD8N_88
+set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_0_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L12N_AD8N_88
+set_property PACKAGE_PIN G16       [get_ports "PMOD0_1_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L12P_AD8P_88
+set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_1_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L12P_AD8P_88
+set_property PACKAGE_PIN H14       [get_ports "PMOD0_2_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L11N_AD9N_88
+set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_2_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L11N_AD9N_88
+set_property PACKAGE_PIN H15       [get_ports "PMOD0_3_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L11P_AD9P_88
+set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_3_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L11P_AD9P_88
+set_property PACKAGE_PIN G13       [get_ports "PMOD0_4_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L10N_AD10N_88
+set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_4_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L10N_AD10N_88
+set_property PACKAGE_PIN H13       [get_ports "PMOD0_5_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L10P_AD10P_88
+set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_5_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L10P_AD10P_88
+set_property PACKAGE_PIN J13       [get_ports "PMOD0_6_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L9N_AD11N_88
+set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_6_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L9N_AD11N_88
+set_property PACKAGE_PIN J14       [get_ports "PMOD0_7_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L9P_AD11P_88
+set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_7_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L9P_AD11P_88
 
 set_property PACKAGE_PIN L17 [get_ports PMOD1_0_LS]
 set_property IOSTANDARD LVCMOS18 [get_ports PMOD1_0_LS]
@@ -31,22 +31,22 @@ set_property IOSTANDARD LVCMOS18 [get_ports PMOD1_0_LS]
 #set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD1_6_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L1N_AD15N_88
 #set_property PACKAGE_PIN N16       [get_ports "PMOD1_7_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L1P_AD15P_88
 #set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD1_7_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L1P_AD15P_88
-set_property PACKAGE_PIN J14 [get_ports {pmod_output_0[7]}]
-set_property PACKAGE_PIN J13 [get_ports {pmod_output_0[6]}]
-set_property PACKAGE_PIN H13 [get_ports {pmod_output_0[5]}]
-set_property PACKAGE_PIN G13 [get_ports {pmod_output_0[4]}]
-set_property PACKAGE_PIN H15 [get_ports {pmod_output_0[3]}]
-set_property PACKAGE_PIN H14 [get_ports {pmod_output_0[2]}]
-set_property PACKAGE_PIN G16 [get_ports {pmod_output_0[1]}]
-set_property PACKAGE_PIN G15 [get_ports {pmod_output_0[0]}]
-set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[7]}]
-set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[6]}]
-set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[5]}]
-set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[4]}]
-set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[3]}]
-set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[2]}]
-set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[1]}]
-set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[0]}]
+# set_property PACKAGE_PIN J14 [get_ports {pmod_output_0[7]}]
+# set_property PACKAGE_PIN J13 [get_ports {pmod_output_0[6]}]
+# set_property PACKAGE_PIN H13 [get_ports {pmod_output_0[5]}]
+# set_property PACKAGE_PIN G13 [get_ports {pmod_output_0[4]}]
+# set_property PACKAGE_PIN H15 [get_ports {pmod_output_0[3]}]
+# set_property PACKAGE_PIN H14 [get_ports {pmod_output_0[2]}]
+# set_property PACKAGE_PIN G16 [get_ports {pmod_output_0[1]}]
+# set_property PACKAGE_PIN G15 [get_ports {pmod_output_0[0]}]
+# set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[7]}]
+# set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[6]}]
+# set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[5]}]
+# set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[4]}]
+# set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[3]}]
+# set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[2]}]
+# set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[1]}]
+# set_property IOSTANDARD LVCMOS18 [get_ports {pmod_output_0[0]}]
 set_property PACKAGE_PIN E25 [get_ports {led_output_0[7]}]
 set_property PACKAGE_PIN BB12 [get_ports {led_output_0[6]}]
 set_property PACKAGE_PIN AY16 [get_ports {led_output_0[5]}]

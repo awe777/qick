@@ -7,7 +7,7 @@ module pmod_shift_register(
 ); 
 reg	[287:0]	gauss_reg;
 reg	[7:0]	lfsr;
-reg	[7:0]	lfsr2;
+//reg	[7:0]	lfsr2;
 
 always @(posedge aclk) begin
 	if (~aresetn) begin
@@ -30,20 +30,20 @@ always @(posedge aclk) begin
 		lfsr[0]		<=	lfsr[7];
 	end
 end
-always @(posedge aclk) begin
-	if (~aresetn) begin
-		lfsr2		<=	8'hff;
-	end else if(&lfsr) begin
-		lfsr2[7]	<=	lfsr2[6];
-		lfsr2[6]	<=	lfsr2[5] ^ lfsr2[7];
-		lfsr2[5]	<=	lfsr2[4] ^ lfsr2[7];
-		lfsr2[4]	<=	lfsr2[3] ^ lfsr2[7];
-		lfsr2[3]	<=	lfsr2[2];
-		lfsr2[2]	<=	lfsr2[1];
-		lfsr2[1]	<=	lfsr2[0];
-		lfsr2[0]	<=	lfsr2[7];
-	end
-end
-assign	led_output	= lfsr2;
+// always @(posedge aclk) begin
+// 	if (~aresetn) begin
+// 		lfsr2		<=	8'hff;
+// 	end else if(&lfsr) begin
+// 		lfsr2[7]	<=	lfsr2[6];
+// 		lfsr2[6]	<=	lfsr2[5] ^ lfsr2[7];
+// 		lfsr2[5]	<=	lfsr2[4] ^ lfsr2[7];
+// 		lfsr2[4]	<=	lfsr2[3] ^ lfsr2[7];
+// 		lfsr2[3]	<=	lfsr2[2];
+// 		lfsr2[2]	<=	lfsr2[1];
+// 		lfsr2[1]	<=	lfsr2[0];
+// 		lfsr2[0]	<=	lfsr2[7];
+// 	end
+// end
+assign	led_output	= lfsr;
 assign	pmod_output	= gauss_reg[287:280];
 endmodule
