@@ -20,6 +20,7 @@ ipython_config.py
 *.log
 *.jou
 vivado_pid*.str
+/firmware/bd*.tcl
 
 ### Python template
 # Byte-compiled / optimized / DLL files
