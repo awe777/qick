@@ -10,7 +10,7 @@ reg	[7:0]	lfsr3;
 always @(posedge aclk) begin
 	if (~aresetn) begin
 		lfsr		<=	8'hff;
-	end else if(~|gauss_reg & |gauss_input) begin
+	end else begin
 		lfsr[7]		<=	lfsr[6];
 		lfsr[6]		<=	lfsr[5] ^ lfsr[7];
 		lfsr[5]		<=	lfsr[4] ^ lfsr[7];
