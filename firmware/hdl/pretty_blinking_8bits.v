@@ -5,10 +5,11 @@ module pretty_blinking_8bits(
 ); 
 reg	[7:0]	lfsr;
 reg	[7:0]	lfsr2;
-reg	[7:0]	lfsr3;
+//reg	[7:0]	lfsr3;
+wire 		unused;
 
 always @(posedge aclk) begin
-	if (~aresetn) begin
+	if (~|lfsr) begin
 		lfsr		<=	8'hff;
 	end else begin
 		lfsr[7]		<=	lfsr[6];
@@ -23,7 +24,7 @@ always @(posedge aclk) begin
 end
 
 always @(posedge aclk) begin
-	if (~aresetn) begin
+	if (~|lfsr2) begin
 		lfsr2		<=	8'hff;
 	end else if(&lfsr) begin
 		lfsr2[7]	<=	lfsr2[6];
@@ -36,21 +37,22 @@ always @(posedge aclk) begin
 		lfsr2[0]	<=	lfsr2[7];
 	end
 end
+// too slow
+//always @(posedge aclk) begin
+//	if (~aresetn) begin
+//		lfsr3		<=	8'hff;
+//	end else if(&lfsr2) begin
+//		lfsr3[7]	<=	lfsr3[6];
+//		lfsr3[6]	<=	lfsr3[5] ^ lfsr3[7];
+//		lfsr3[5]	<=	lfsr3[4] ^ lfsr3[7];
+//		lfsr3[4]	<=	lfsr3[3] ^ lfsr3[7];
+//		lfsr3[3]	<=	lfsr3[2];
+//		lfsr3[2]	<=	lfsr3[1];
+//		lfsr3[1]	<=	lfsr3[0];
+//		lfsr3[0]	<=	lfsr3[7];
+//	end
+//end
 
-always @(posedge aclk) begin
-	if (~aresetn) begin
-		lfsr3		<=	8'hff;
-	end else if(&lfsr2) begin
-		lfsr3[7]	<=	lfsr3[6];
-		lfsr3[6]	<=	lfsr3[5] ^ lfsr3[7];
-		lfsr3[5]	<=	lfsr3[4] ^ lfsr3[7];
-		lfsr3[4]	<=	lfsr3[3] ^ lfsr3[7];
-		lfsr3[3]	<=	lfsr3[2];
-		lfsr3[2]	<=	lfsr3[1];
-		lfsr3[1]	<=	lfsr3[0];
-		lfsr3[0]	<=	lfsr3[7];
-	end
-end
-
-assign	led_output	= lfsr3;
+assign	led_output	= lfsr2;
+assign	unused		= aresetn;
 endmodule

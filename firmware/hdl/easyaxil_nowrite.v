@@ -298,14 +298,22 @@ module	easyaxil_nowrite #(
 	else if (!S_AXI_RVALID || S_AXI_RREADY)
 	begin
 		case(arskd_addr)
-		3'b000:	axil_read_data	<= r0;
-		3'b001:	axil_read_data	<= r1;
-		3'b010:	axil_read_data	<= r2;
-		3'b011:	axil_read_data	<= r3;
-		3'b100:	axil_read_data	<= r4;
-		3'b101:	axil_read_data	<= r5;
-		3'b110:	axil_read_data	<= r6;
-		3'b111:	axil_read_data	<= r7;
+		// 3'b000:	axil_read_data	<= r0;
+		// 3'b001:	axil_read_data	<= r1;
+		// 3'b010:	axil_read_data	<= r2;
+		// 3'b011:	axil_read_data	<= r3;
+		// 3'b100:	axil_read_data	<= r4;
+		// 3'b101:	axil_read_data	<= r5;
+		// 3'b110:	axil_read_data	<= r6;
+		// 3'b111:	axil_read_data	<= r7;
+		3'b000:	axil_read_data	<= 32'h1337C0D3;
+		3'b001:	axil_read_data	<= 32'hDEADBEEF;
+		3'b010:	axil_read_data	<= 32'hCAFEBABE;
+		3'b011:	axil_read_data	<= 32'h0B00B135;
+		3'b100:	axil_read_data	<= 32'h4B1D4B1D;
+		3'b101:	axil_read_data	<= 32'hDEADC0DE;
+		3'b110:	axil_read_data	<= 32'hD0D0CACA;
+		3'b111:	axil_read_data	<= 32'hF0CACC1A;
 		endcase
 
 		if (OPT_LOWPOWER && !axil_read_ready)
