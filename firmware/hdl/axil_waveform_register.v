@@ -106,7 +106,7 @@ module	axil_waveform_register #(
 	wire	[255:0] input_data;
 	reg		[255:0] input_data_reg;
 	wire	[31:0]	next_out [0:15];
-	reg		[15:0]	counter;
+	reg		[31:0]	memory;
 	// reg [63:0]	reg3, reg2, reg1, reg0;
 	// wire	[63:0]	reg3_wire, reg2_wire, reg1_wire, reg0_wire;
 	// wire	[63:0]	reg3_src, reg2_src, reg1_src, reg0_src;
@@ -119,14 +119,14 @@ module	axil_waveform_register #(
 	// assign reg2_src = {32'hDEADC0DE, 32'h4B1D4B1D};
 	// assign reg1_src = {32'h0B00B135, 32'hCAFEBABE};
 	// assign reg0_src = {32'hDEADBEEF, 32'h1337C0D3};
-	assign input_data = {32'hF0CACC1A, 32'hD0D0CACA, 32'hDEADC0DE, 32'h4B1D4B1D, 32'h0B00B135, 32'hCAFEBABE, 32'hDEADBEEF, 32'h1337C0D3};
+	//assign input_data = {32'hF0CACC1A, 32'hD0D0CACA, 32'hDEADC0DE, 32'h4B1D4B1D, 32'h0B00B135, 32'hCAFEBABE, 32'hDEADBEEF, 32'h1337C0D3};
 	generate
 	genvar i_a;
 		for (i_a=0; i_a<16; i_a=i_a+1) begin : next_out_assignment
-			assign next_out[i_a] = {12'd0, counter[3:0], input_data_reg[i_a*16 +: 16]};
+			assign next_out[i_a] = {12'd0, i_a, input_data_reg[i_a*16 +: 16]};
 		end
 	endgenerate
-	// assign input_data = gauss_input;
+	assign input_data = gauss_input;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -328,7 +328,7 @@ module	axil_waveform_register #(
 	// else 
 	if (!S_AXI_RVALID || S_AXI_RREADY)
 	begin
-		case(counter[3:0])
+		case(r0[3:0])
 		4'b0000:	axil_read_data	<= next_out[4'h0];
 		4'b0001:	axil_read_data	<= next_out[4'h1];
 		4'b0010:	axil_read_data	<= next_out[4'h2];
@@ -350,13 +350,12 @@ module	axil_waveform_register #(
 		// if (OPT_LOWPOWER && !axil_read_ready)
 		// 	axil_read_data <= 0;
 	end
-	initial	counter = 16'hffff;
+	initial	memory = 32'd0;
 	initial input_data_reg = 0;
 	always @(posedge S_AXI_ACLK)
-	if (!S_AXI_RVALID || S_AXI_RREADY)
 	begin
-		counter	<= counter + 1;
-		input_data_reg	<=	&counter[3:0] ? input_data : input_data_reg;
+		memory	<= r1;
+		input_data_reg	<=	|(memory ^ r1) ? input_data : input_data_reg;
 	end
 
 	function [C_AXI_DATA_WIDTH-1:0]	apply_wstrb;
