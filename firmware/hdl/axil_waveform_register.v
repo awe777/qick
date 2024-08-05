@@ -42,15 +42,10 @@
 // original file: https://github.com/ZipCPU/wb2axip/blob/master/rtl/easyaxil.v
 // }}}
 module	axil_waveform_register #(
-		// {{{
-		//
-		// Size of the AXI-lite bus.  These are fixed, since 1) AXI-lite
-		// is fixed at a width of 32-bits by Xilinx def'n, and 2) since
-		// we only ever have 4 configuration words.
 		parameter	C_AXI_ADDR_WIDTH = 4,
-		localparam	C_AXI_DATA_WIDTH = 32,
+		localparam	C_AXI_DATA_WIDTH = 32
 		// parameter [0:0]	OPT_SKIDBUFFER = 1'b0,
-		parameter [0:0]	OPT_LOWPOWER = 0
+		// parameter [0:0]	OPT_LOWPOWER = 0
 		// }}}
 	) (
 		// {{{
@@ -80,20 +75,7 @@ module	axil_waveform_register #(
 		input	wire					S_AXI_RREADY,
 		output	wire	[C_AXI_DATA_WIDTH-1:0]		S_AXI_RDATA,
 		output	wire	[1:0]				S_AXI_RRESP,
-		input	wire	[255:0]				dac0,
-		input	wire	[255:0]				dac1,
-		input	wire	[255:0]				dac2,
-		input	wire	[255:0]				dac3,
-		input	wire	[255:0]				dac4,
-		input	wire	[255:0]				dac5,
-		input	wire	[255:0]				dac6,
-		input	wire						dac0_clk,
-		input	wire						dac1_clk,
-		input	wire						dac2_clk,
-		input	wire						dac3_clk,
-		input	wire						dac4_clk,
-		input	wire						dac5_clk,
-		input	wire						dac6_clk
+		input	wire	[255:0]			gauss_input
 		// }}}
 	);
 
@@ -119,11 +101,32 @@ module	axil_waveform_register #(
 	reg	[C_AXI_DATA_WIDTH-1:0]	axil_read_data;
 	reg				axil_read_valid;
 
-	reg		[31:0]	r0, r1;
-	wire	[31:0]	wskd_r0, wskd_r1;
-	reg		[15:0]	last_value;
-	reg		[255:0] dac0_r, dac1_r, dac2_r, dac3_r, dac4_r, dac5_r, dac6_r;
-	reg				dac0_f, dac1_f, dac2_f, dac3_f, dac4_f, dac5_f, dac6_f;
+	reg	[31:0]	r0, r1, r2, r3;
+	wire	[31:0]	wskd_r0, wskd_r1, wskd_r2, wskd_r3;
+	wire	[255:0] input_data;
+	reg		[255:0] input_data_reg;
+	wire	[31:0]	next_out [0:15];
+	reg		[15:0]	counter;
+	// reg [63:0]	reg3, reg2, reg1, reg0;
+	// wire	[63:0]	reg3_wire, reg2_wire, reg1_wire, reg0_wire;
+	// wire	[63:0]	reg3_src, reg2_src, reg1_src, reg0_src;
+	// wire update_register;
+	// assign reg3_src = gauss_input[255:192];
+	// assign reg2_src = gauss_input[191:128];
+	// assign reg1_src = gauss_input[127:64];
+	// assign reg0_src = gauss_input[63:0];
+	// assign reg3_src = {32'hF0CACC1A, 32'hD0D0CACA};
+	// assign reg2_src = {32'hDEADC0DE, 32'h4B1D4B1D};
+	// assign reg1_src = {32'h0B00B135, 32'hCAFEBABE};
+	// assign reg0_src = {32'hDEADBEEF, 32'h1337C0D3};
+	assign input_data = {32'hF0CACC1A, 32'hD0D0CACA, 32'hDEADC0DE, 32'h4B1D4B1D, 32'h0B00B135, 32'hCAFEBABE, 32'hDEADBEEF, 32'h1337C0D3};
+	generate
+	genvar i_a;
+		for (i_a=0; i_a<16; i_a=i_a+1) begin : next_out_assignment
+			assign next_out[i_a] = {12'd0, counter[3:0], input_data_reg[i_a*16 +: 16]};
+		end
+	endgenerate
+	// assign input_data = gauss_input;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -269,199 +272,92 @@ module	axil_waveform_register #(
 	// apply_wstrb(old_data, new_data, write_strobes)
 	assign	wskd_r0 = apply_wstrb(r0, wskd_data, wskd_strb);
 	assign	wskd_r1 = apply_wstrb(r1, wskd_data, wskd_strb);
+	assign	wskd_r2 = apply_wstrb(r2, wskd_data, wskd_strb);
+	assign	wskd_r3 = apply_wstrb(r3, wskd_data, wskd_strb);
 
-	initial	r0 = 32'hffffffff;
+	initial	r0 = 0;
+	initial	r1 = 0;
+	initial	r2 = 0;
+	initial	r3 = 0;
 	always @(posedge S_AXI_ACLK)
 	if (i_reset)
 	begin
-		r0 <= 32'hffffffff;
+		r0 <= 0;
+		r1 <= 0;
+		r2 <= 0;
+		r3 <= 0;
 	end else if (axil_write_ready)
 	begin
 		case(awskd_addr)
-		2'b00:		r0 <= wskd_r0;
-		2'b10:		r0 <= wskd_r0;
+		2'b00:	r0 <= wskd_r0;
+		2'b01:	r1 <= wskd_r1;
+		2'b10:	r2 <= wskd_r2;
+		2'b11:	r3 <= wskd_r3;
 		endcase
 	end
 
-	initial	r1 = 0;
-	always @(posedge S_AXI_ACLK)
-	if (i_reset)
-	begin
-		r1 <= 0;
-	end else
-	begin
-		case(r0[7:0])
-		8'h00:		r1 <= dac0_r[255:224];
-		8'h01:		r1 <= dac0_r[223:192];
-		8'h02:		r1 <= dac0_r[191:160];
-		8'h03:		r1 <= dac0_r[159:128];
-		8'h04:		r1 <= dac0_r[127:96];
-		8'h05:		r1 <= dac0_r[95:64];
-		8'h06:		r1 <= dac0_r[63:32];
-		8'h07:		r1 <= dac0_r[31:0];
-		8'h10:		r1 <= dac1_r[255:224];
-		8'h11:		r1 <= dac1_r[223:192];
-		8'h12:		r1 <= dac1_r[191:160];
-		8'h13:		r1 <= dac1_r[159:128];
-		8'h14:		r1 <= dac1_r[127:96];
-		8'h15:		r1 <= dac1_r[95:64];
-		8'h16:		r1 <= dac1_r[63:32];
-		8'h17:		r1 <= dac1_r[31:0];
-		8'h20:		r1 <= dac2_r[255:224];
-		8'h21:		r1 <= dac2_r[223:192];
-		8'h22:		r1 <= dac2_r[191:160];
-		8'h23:		r1 <= dac2_r[159:128];
-		8'h24:		r1 <= dac2_r[127:96];
-		8'h25:		r1 <= dac2_r[95:64];
-		8'h26:		r1 <= dac2_r[63:32];
-		8'h27:		r1 <= dac2_r[31:0];
-		8'h30:		r1 <= dac3_r[255:224];
-		8'h31:		r1 <= dac3_r[223:192];
-		8'h32:		r1 <= dac3_r[191:160];
-		8'h33:		r1 <= dac3_r[159:128];
-		8'h34:		r1 <= dac3_r[127:96];
-		8'h35:		r1 <= dac3_r[95:64];
-		8'h36:		r1 <= dac3_r[63:32];
-		8'h37:		r1 <= dac3_r[31:0];
-		8'h40:		r1 <= dac4_r[255:224];
-		8'h41:		r1 <= dac4_r[223:192];
-		8'h42:		r1 <= dac4_r[191:160];
-		8'h43:		r1 <= dac4_r[159:128];
-		8'h44:		r1 <= dac4_r[127:96];
-		8'h45:		r1 <= dac4_r[95:64];
-		8'h46:		r1 <= dac4_r[63:32];
-		8'h47:		r1 <= dac4_r[31:0];
-		8'h50:		r1 <= dac5_r[255:224];
-		8'h51:		r1 <= dac5_r[223:192];
-		8'h52:		r1 <= dac5_r[191:160];
-		8'h53:		r1 <= dac5_r[159:128];
-		8'h54:		r1 <= dac5_r[127:96];
-		8'h55:		r1 <= dac5_r[95:64];
-		8'h56:		r1 <= dac5_r[63:32];
-		8'h57:		r1 <= dac5_r[31:0];
-		8'h60:		r1 <= dac6_r[255:224];
-		8'h61:		r1 <= dac6_r[223:192];
-		8'h62:		r1 <= dac6_r[191:160];
-		8'h63:		r1 <= dac6_r[159:128];
-		8'h64:		r1 <= dac6_r[127:96];
-		8'h65:		r1 <= dac6_r[95:64];
-		8'h66:		r1 <= dac6_r[63:32];
-		8'h67:		r1 <= dac6_r[31:0];
-		default:	r1 <= 32'hdeadbeef;
-		endcase
-	end
+// 	initial	reg3 = 0;
+// 	initial	reg2 = 0;
+// 	initial	reg1 = 0;
+// 	initial	reg0 = 0;
+// 	assign reg3_wire = {reg3[31:0], 32'd0};
+// 	assign reg2_wire = {reg2[31:0], 32'd0};
+// 	assign reg1_wire = {reg1[31:0], 32'd0};
+// 	assign reg0_wire = {reg0[31:0], 32'd0};
+// 	assign update_register = ~|{reg3_wire, reg2_wire, reg1_wire, reg0_wire}; 
+// 	always @(posedge S_AXI_ACLK)
+// 	// if ((!S_AXI_RVALID || S_AXI_RREADY) && (!OPT_LOWPOWER || axil_read_ready))
+// 	if (!S_AXI_RVALID || S_AXI_RREADY)
+// 	begin
+// 		case(arskd_addr)
+// //		2'b00:	reg0	<= ~|reg0_wire ? reg0_src : reg0_wire;
+// //		2'b01:	reg1	<= ~|reg1_wire ? reg1_src : reg1_wire;
+// //		2'b10:	reg2	<= ~|reg2_wire ? reg2_src : reg2_wire;
+// //		2'b11:	reg3	<= ~|reg3_wire ? reg3_src : reg3_wire;
+// 		2'b00:	reg0	<= update_register ? reg0_src : reg0_wire;
+// 		2'b01:	reg1	<= update_register ? reg1_src : reg1_wire;
+// 		2'b10:	reg2	<= update_register ? reg2_src : reg2_wire;
+// 		2'b11:	reg3	<= update_register ? reg3_src : reg3_wire;
+// 		endcase
+// 	end
 
 	initial	axil_read_data = 0;
 	always @(posedge S_AXI_ACLK)
-	if (OPT_LOWPOWER && !S_AXI_ARESETN)
-		axil_read_data <= 0;
-	else if (!S_AXI_RVALID || S_AXI_RREADY)
+	// if (OPT_LOWPOWER && !S_AXI_ARESETN)
+	// 	axil_read_data <= 0;
+	// else 
+	if (!S_AXI_RVALID || S_AXI_RREADY)
 	begin
-		case(arskd_addr)
-		2'b00:	axil_read_data	<= r0;
-		2'b01:	axil_read_data	<= r1;
-		2'b10:	axil_read_data	<= r0;
-		2'b11:	axil_read_data	<= r1;
+		case(counter[3:0])
+		4'b0000:	axil_read_data	<= next_out[4'h0];
+		4'b0001:	axil_read_data	<= next_out[4'h1];
+		4'b0010:	axil_read_data	<= next_out[4'h2];
+		4'b0011:	axil_read_data	<= next_out[4'h3];
+		4'b0100:	axil_read_data	<= next_out[4'h4];
+		4'b0101:	axil_read_data	<= next_out[4'h5];
+		4'b0110:	axil_read_data	<= next_out[4'h6];
+		4'b0111:	axil_read_data	<= next_out[4'h7];
+		4'b1000:	axil_read_data	<= next_out[4'h8];
+		4'b1001:	axil_read_data	<= next_out[4'h9];
+		4'b1010:	axil_read_data	<= next_out[4'ha];
+		4'b1011:	axil_read_data	<= next_out[4'hb];
+		4'b1100:	axil_read_data	<= next_out[4'hc];
+		4'b1101:	axil_read_data	<= next_out[4'hd];
+		4'b1110:	axil_read_data	<= next_out[4'he];
+		4'b1111:	axil_read_data	<= next_out[4'hf];
 		endcase
 
-		if (OPT_LOWPOWER && !axil_read_ready)
-			axil_read_data <= 0;
+		// if (OPT_LOWPOWER && !axil_read_ready)
+		// 	axil_read_data <= 0;
 	end
-
-	initial	last_value = 16'hffff;
+	initial	counter = 16'hffff;
+	initial input_data_reg = 0;
 	always @(posedge S_AXI_ACLK)
-	if (i_reset)
+	if (!S_AXI_RVALID || S_AXI_RREADY)
 	begin
-		last_value <= 16'hffff;
-	end else 
-	begin
-		last_value <= r0[31:16];
+		counter	<= counter + 1;
+		input_data_reg	<=	&counter[3:0] ? input_data : input_data_reg;
 	end
-
-	initial	dac0_r = 0;
-	initial	dac0_f = 0;
-	always @(posedge dac0_clk)
-	if (i_reset)
-	begin
-		dac0_r <= 0;
-		dac0_f <= 0;
-	end else
-	begin
-		dac0_r <= |(last_value ^ r0[31:16]) & ~dac0_f ? dac0 : dac0_r;
-		dac0_f <= |(last_value ^ r0[31:16]);
-	end
-	initial	dac1_r = 0;
-	initial	dac1_f = 0;
-	always @(posedge dac1_clk)
-	if (i_reset)
-	begin
-		dac1_r <= 0;
-		dac1_f <= 0;
-	end else
-	begin
-		dac1_r <= |(last_value ^ r0[31:16]) & ~dac1_f ? dac1 : dac1_r;
-		dac1_f <= |(last_value ^ r0[31:16]);
-	end
-	initial	dac2_r = 0;
-	initial	dac2_f = 0;
-	always @(posedge dac2_clk)
-	if (i_reset)
-	begin
-		dac2_r <= 0;
-		dac2_f <= 0;
-	end else
-	begin
-		dac2_r <= |(last_value ^ r0[31:16]) & ~dac2_f ? dac2 : dac2_r;
-		dac2_f <= |(last_value ^ r0[31:16]);
-	end
-	initial	dac3_r = 0;
-	initial	dac3_f = 0;
-	always @(posedge dac3_clk)
-	if (i_reset)
-	begin
-		dac3_r <= 0;
-		dac3_f <= 0;
-	end else
-	begin
-		dac3_r <= |(last_value ^ r0[31:16]) & ~dac3_f ? dac3 : dac3_r;
-		dac3_f <= |(last_value ^ r0[31:16]);
-	end
-	initial	dac4_r = 0;
-	initial	dac4_f = 0;
-	always @(posedge dac4_clk)
-	if (i_reset)
-	begin
-		dac4_r <= 0;
-		dac4_f <= 0;
-	end else
-	begin
-		dac4_r <= |(last_value ^ r0[31:16]) & ~dac4_f ? dac4 : dac4_r;
-		dac4_f <= |(last_value ^ r0[31:16]);
-	end
-	initial	dac5_r = 0;
-	initial	dac5_f = 0;
-	always @(posedge dac5_clk)
-	if (i_reset)
-	begin
-		dac5_r <= 0;
-		dac5_f <= 0;
-	end else
-	begin
-		dac5_r <= |(last_value ^ r0[31:16]) & ~dac5_f ? dac5 : dac5_r;
-		dac5_f <= |(last_value ^ r0[31:16]);
-	end
-	initial	dac6_r = 0;
-	initial	dac6_f = 0;
-	always @(posedge dac6_clk)
-	if (i_reset)
-	begin
-		dac6_r <= 0;
-		dac6_f <= 0;
-	end else
-	begin
-		dac6_r <= |(last_value ^ r0[31:16]) & ~dac6_f ? dac6 : dac6_r;
-		dac6_f <= |(last_value ^ r0[31:16]);
-	end	
 
 	function [C_AXI_DATA_WIDTH-1:0]	apply_wstrb;
 		input	[C_AXI_DATA_WIDTH-1:0]		prior_data;
@@ -483,215 +379,8 @@ module	axil_waveform_register #(
 	wire	unused;
 	assign	unused = &{ 1'b0, S_AXI_AWPROT, S_AXI_ARPROT,
 			S_AXI_ARADDR[ADDRLSB-1:0],
+			gauss_input,
 			S_AXI_AWADDR[ADDRLSB-1:0] };
 	// Verilator lint_on  UNUSED
 	// }}}
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-//
-// Formal properties
-// {{{
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-// `ifdef	FORMAL
-// 	////////////////////////////////////////////////////////////////////////
-// 	//
-// 	// The AXI-lite control interface
-// 	//
-// 	////////////////////////////////////////////////////////////////////////
-// 	//
-// 	// {{{
-// 	localparam	F_AXIL_LGDEPTH = 4;
-// 	wire	[F_AXIL_LGDEPTH-1:0]	faxil_rd_outstanding,
-// 					faxil_wr_outstanding,
-// 					faxil_awr_outstanding;
-
-// 	faxil_slave #(
-// 		// {{{
-// 		.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
-// 		.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
-// 		.F_LGDEPTH(F_AXIL_LGDEPTH),
-// 		.F_AXI_MAXWAIT(3),
-// 		.F_AXI_MAXDELAY(3),
-// 		.F_AXI_MAXRSTALL(5),
-// 		.F_OPT_COVER_BURST(4)
-// 		// }}}
-// 	) faxil(
-// 		// {{{
-// 		.i_clk(S_AXI_ACLK), .i_axi_reset_n(S_AXI_ARESETN),
-// 		//
-// 		.i_axi_awvalid(S_AXI_AWVALID),
-// 		.i_axi_awready(S_AXI_AWREADY),
-// 		.i_axi_awaddr( S_AXI_AWADDR),
-// 		.i_axi_awprot( S_AXI_AWPROT),
-// 		//
-// 		.i_axi_wvalid(S_AXI_WVALID),
-// 		.i_axi_wready(S_AXI_WREADY),
-// 		.i_axi_wdata( S_AXI_WDATA),
-// 		.i_axi_wstrb( S_AXI_WSTRB),
-// 		//
-// 		.i_axi_bvalid(S_AXI_BVALID),
-// 		.i_axi_bready(S_AXI_BREADY),
-// 		.i_axi_bresp( S_AXI_BRESP),
-// 		//
-// 		.i_axi_arvalid(S_AXI_ARVALID),
-// 		.i_axi_arready(S_AXI_ARREADY),
-// 		.i_axi_araddr( S_AXI_ARADDR),
-// 		.i_axi_arprot( S_AXI_ARPROT),
-// 		//
-// 		.i_axi_rvalid(S_AXI_RVALID),
-// 		.i_axi_rready(S_AXI_RREADY),
-// 		.i_axi_rdata( S_AXI_RDATA),
-// 		.i_axi_rresp( S_AXI_RRESP),
-// 		//
-// 		.f_axi_rd_outstanding(faxil_rd_outstanding),
-// 		.f_axi_wr_outstanding(faxil_wr_outstanding),
-// 		.f_axi_awr_outstanding(faxil_awr_outstanding)
-// 		// }}}
-// 		);
-
-// 	always @(*)
-// 	if (OPT_SKIDBUFFER)
-// 	begin
-// 		assert(faxil_awr_outstanding== (S_AXI_BVALID ? 1:0)
-// 			+(S_AXI_AWREADY ? 0:1));
-// 		assert(faxil_wr_outstanding == (S_AXI_BVALID ? 1:0)
-// 			+(S_AXI_WREADY ? 0:1));
-
-// 		assert(faxil_rd_outstanding == (S_AXI_RVALID ? 1:0)
-// 			+(S_AXI_ARREADY ? 0:1));
-// 	end else begin
-// 		assert(faxil_wr_outstanding == (S_AXI_BVALID ? 1:0));
-// 		assert(faxil_awr_outstanding == faxil_wr_outstanding);
-
-// 		assert(faxil_rd_outstanding == (S_AXI_RVALID ? 1:0));
-// 	end
-
-// 	//
-// 	// Check that our low-power only logic works by verifying that anytime
-// 	// S_AXI_RVALID is inactive, then the outgoing data is also zero.
-// 	//
-// 	always @(*)
-// 	if (OPT_LOWPOWER && !S_AXI_RVALID)
-// 		assert(S_AXI_RDATA == 0);
-// 	// }}}
-// 	////////////////////////////////////////////////////////////////////////
-// 	//
-// 	// Register return checking
-// 	// {{{
-// 	////////////////////////////////////////////////////////////////////////
-// 	//
-// 	//
-// `define	CHECK_REGISTERS
-// `ifdef	CHECK_REGISTERS
-// 	faxil_register #(
-// 		// {{{
-// 		.AW(C_AXI_ADDR_WIDTH),
-// 		.DW(C_AXI_DATA_WIDTH),
-// 		.ADDR(0)
-// 		// }}}
-// 	) fr0 (
-// 		// {{{
-// 		.S_AXI_ACLK(S_AXI_ACLK),
-// 		.S_AXI_ARESETN(S_AXI_ARESETN),
-// 		.S_AXIL_AWW(axil_write_ready),
-// 		.S_AXIL_AWADDR({ awskd_addr, {(ADDRLSB){1'b0}} }),
-// 		.S_AXIL_WDATA(wskd_data),
-// 		.S_AXIL_WSTRB(wskd_strb),
-// 		.S_AXIL_BVALID(S_AXI_BVALID),
-// 		.S_AXIL_AR(axil_read_ready),
-// 		.S_AXIL_ARADDR({ arskd_addr, {(ADDRLSB){1'b0}} }),
-// 		.S_AXIL_RVALID(S_AXI_RVALID),
-// 		.S_AXIL_RDATA(S_AXI_RDATA),
-// 		.i_register(r0)
-// 		// }}}
-// 	);
-
-// 	faxil_register #(
-// 		// {{{
-// 		.AW(C_AXI_ADDR_WIDTH),
-// 		.DW(C_AXI_DATA_WIDTH),
-// 		.ADDR(4)
-// 		// }}}
-// 	) fr1 (
-// 		// {{{
-// 		.S_AXI_ACLK(S_AXI_ACLK),
-// 		.S_AXI_ARESETN(S_AXI_ARESETN),
-// 		.S_AXIL_AWW(axil_write_ready),
-// 		.S_AXIL_AWADDR({ awskd_addr, {(ADDRLSB){1'b0}} }),
-// 		.S_AXIL_WDATA(wskd_data),
-// 		.S_AXIL_WSTRB(wskd_strb),
-// 		.S_AXIL_BVALID(S_AXI_BVALID),
-// 		.S_AXIL_AR(axil_read_ready),
-// 		.S_AXIL_ARADDR({ arskd_addr, {(ADDRLSB){1'b0}} }),
-// 		.S_AXIL_RVALID(S_AXI_RVALID),
-// 		.S_AXIL_RDATA(S_AXI_RDATA),
-// 		.i_register(r1)
-// 		// }}}
-// 	);
-
-// 	faxil_register #(
-// 		// {{{
-// 		.AW(C_AXI_ADDR_WIDTH),
-// 		.DW(C_AXI_DATA_WIDTH),
-// 		.ADDR(8)
-// 		// }}}
-// 	) fr2 (
-// 		// {{{
-// 		.S_AXI_ACLK(S_AXI_ACLK),
-// 		.S_AXI_ARESETN(S_AXI_ARESETN),
-// 		.S_AXIL_AWW(axil_write_ready),
-// 		.S_AXIL_AWADDR({ awskd_addr, {(ADDRLSB){1'b0}} }),
-// 		.S_AXIL_WDATA(wskd_data),
-// 		.S_AXIL_WSTRB(wskd_strb),
-// 		.S_AXIL_BVALID(S_AXI_BVALID),
-// 		.S_AXIL_AR(axil_read_ready),
-// 		.S_AXIL_ARADDR({ arskd_addr, {(ADDRLSB){1'b0}} }),
-// 		.S_AXIL_RVALID(S_AXI_RVALID),
-// 		.S_AXIL_RDATA(S_AXI_RDATA),
-// 		.i_register(r2)
-// 		// }}}
-// 	);
-
-// 	faxil_register #(
-// 		// {{{
-// 		.AW(C_AXI_ADDR_WIDTH),
-// 		.DW(C_AXI_DATA_WIDTH),
-// 		.ADDR(12)
-// 		// }}}
-// 	) fr3 (
-// 		// {{{
-// 		.S_AXI_ACLK(S_AXI_ACLK),
-// 		.S_AXI_ARESETN(S_AXI_ARESETN),
-// 		.S_AXIL_AWW(axil_write_ready),
-// 		.S_AXIL_AWADDR({ awskd_addr, {(ADDRLSB){1'b0}} }),
-// 		.S_AXIL_WDATA(wskd_data),
-// 		.S_AXIL_WSTRB(wskd_strb),
-// 		.S_AXIL_BVALID(S_AXI_BVALID),
-// 		.S_AXIL_AR(axil_read_ready),
-// 		.S_AXIL_ARADDR({ arskd_addr, {(ADDRLSB){1'b0}} }),
-// 		.S_AXIL_RVALID(S_AXI_RVALID),
-// 		.S_AXIL_RDATA(S_AXI_RDATA),
-// 		.i_register(r3)
-// 		// }}}
-// 	);
-// `endif
-// 	// }}}
-// 	////////////////////////////////////////////////////////////////////////
-// 	//
-// 	// Cover checks
-// 	//
-// 	////////////////////////////////////////////////////////////////////////
-// 	//
-// 	// {{{
-
-// 	// While there are already cover properties in the formal property
-// 	// set above, you'll probably still want to cover something
-// 	// application specific here
-
-// 	// }}}
-// `endif
-// }}}
 endmodule
