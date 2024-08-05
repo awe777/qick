@@ -378,7 +378,6 @@ module	axil_waveform_register #(
 	wire	unused;
 	assign	unused = &{ 1'b0, S_AXI_AWPROT, S_AXI_ARPROT,
 			S_AXI_ARADDR[ADDRLSB-1:0],
-			gauss_input,
 			S_AXI_AWADDR[ADDRLSB-1:0] };
 	// Verilator lint_on  UNUSED
 	// }}}
