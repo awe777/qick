@@ -98,7 +98,7 @@ reg 		[31:0]							gauss_a2;
 reg 		[31:0]							gauss_b;
 reg 		[31:0]							gauss_c;
 //reg											LMR_clock;
-wire 		[47:0]							gauss_c_wireholder;
+wire 		[31:0]							gauss_c_wireholder;
 // section 6: debug
 reg											last_cmp_reg_not_zero; // cmp_values[N_DDS*STORED_SETS - 1]
 reg											half_max_reg_not_zero; // halfmax_accum[N_DDS*STORED_SETS/2 - 2]
@@ -299,7 +299,7 @@ latency_reg
 assign rise_to_fall_tally = halfmax_accum[N_DDS*STORED_SETS/2 - 2]; 	
 // starting value of rise_to_fall_tally is 256 (because max(y) = 0 means y >= max(y)/2 for all 256 values of y)
 // therefore, rise_to_fall's update is safeguarded by a criteria to update only when the current maximum is not 0
-assign zero_to_half_tally = {1'b0, ~halfmax_accum[N_DDS*STORED_SETS/2 - 2][CLOG2_DDS_SETS-2:0]} + 1;
+assign zero_to_half_tally = 9'd256 - halfmax_accum[N_DDS*STORED_SETS/2 - 2];
 always @(posedge clk) begin
 	if (~rstn | refresh) begin
 		zero_to_half									<=	0;
@@ -379,7 +379,7 @@ end
 // 		sqrt_R_squared									<=	sqrt_R_squared;
 // 	end
 // end
-assign gauss_c_wireholder = {rise_to_fall >>> 1, 16'd0} - 16'd9875 * (rise_to_fall >>> 1); // approximation to rise_to_fall/(2*sqrt(2ln2))
+assign gauss_c_wireholder = {8'd0, rise_to_fall, 15'd0} - 24'd9875 * rise_to_fall[CLOG2_DDS_SETS:1]; // approximation to rise_to_fall/(2*sqrt(2ln2))
 //assign stability_LMR = ~|(sqrt_M_wire ^ sqrt_L); // it will take 2 * $clog2(max - 1) clock cycles after a_ready for this to return 1
 always @(posedge clk) begin
 	if (~rstn) begin
@@ -392,7 +392,7 @@ always @(posedge clk) begin
 	else begin
 		gauss_a2										<=	bc_ready ? cmp_values[N_DDS*STORED_SETS-1] : gauss_a2;
 		gauss_b											<=	bc_ready ? zero_to_half + (rise_to_fall >>> 1) : gauss_b;
-		gauss_c											<=	bc_ready ? gauss_c_wireholder[47:16] : gauss_c;
+		gauss_c											<=	bc_ready ? gauss_c_wireholder : gauss_c;
 		refresh											<=	|gauss_c & bc_ready;
 		past_checks										<=	refresh ? {last_cmp_reg_not_zero, half_max_reg_not_zero, cmp_value_last_match_, cmp_future_match_last} : past_checks;
 	end
