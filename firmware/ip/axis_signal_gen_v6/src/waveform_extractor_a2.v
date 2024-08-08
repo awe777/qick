@@ -69,7 +69,9 @@ wire signed	[31:0]							stored_values_la[0:N_DDS*STORED_SETS-1];	// actually wi
 // section 3
 reg signed	[31:0]							cmp_values[0:N_DDS*STORED_SETS-1];
 wire signed	[31:0]							cmp_value_last;
-reg											refresh;
+//reg											refresh;
+wire										refresh;
+reg											refresh_early;
 // section 4
 //wire		[N_DDS*STORED_SETS-1:0]	argmax_equal;
 wire signed	[31:0]							cmp_future_;
@@ -97,6 +99,9 @@ reg											bc_ready;
 reg 		[31:0]							gauss_a2;
 reg 		[31:0]							gauss_b;
 reg 		[31:0]							gauss_c;
+wire 		[31:0]							gauss_a2_wireholder;
+wire		[31:0]							gauss_b_wireholder;
+wire		[31:0]							gauss_c_wireholder;
 //reg											LMR_clock;
 //wire 		[31:0]							gauss_c_wireholder;
 // section 6: debug
@@ -299,7 +304,7 @@ latency_reg
 assign rise_to_fall_tally = halfmax_accum[N_DDS*STORED_SETS/2 - 2]; 	
 // starting value of rise_to_fall_tally is 256 (because max(y) = 0 means y >= max(y)/2 for all 256 values of y)
 // therefore, rise_to_fall's update is safeguarded by a criteria to update only when the current maximum is not 0
-assign zero_to_half_tally = (9'd255 ^ halfmax_accum[N_DDS*STORED_SETS/2 - 2]) + 1;
+assign zero_to_half_tally = 9'd256 - halfmax_accum[N_DDS*STORED_SETS/2 - 2];
 always @(posedge clk) begin
 	if (~rstn | refresh) begin
 		zero_to_half									<=	0;
@@ -381,22 +386,39 @@ end
 // end
 // assign gauss_c_wireholder = 15'd27830 * rise_to_fall; // approximation to rise_to_fall/(2*sqrt(2ln2))
 //assign stability_LMR = ~|(sqrt_M_wire ^ sqrt_L); // it will take 2 * $clog2(max - 1) clock cycles after a_ready for this to return 1
+assign gauss_a2_wireholder = cmp_values[N_DDS*STORED_SETS-1];
+assign gauss_b_wireholder = {23'd0, zero_to_half + (rise_to_fall >>> 1)}; 
+// changing (rise_to_fall >>> 1) to rise_to_fall[CLOG2_DDS_SETS:1] horribly affects signal timings
+assign gauss_c_wireholder = {23'd0, rise_to_fall};
+
 always @(posedge clk) begin
 	if (~rstn) begin
 		gauss_a2										<=	0;
 		gauss_b											<=	0;
 		gauss_c											<=	0;
-		refresh											<=	0;
+		refresh_early									<=	0;
 		past_checks										<=	0;
 	end
 	else begin
-		gauss_a2										<=	bc_ready ? cmp_values[N_DDS*STORED_SETS-1] : gauss_a2;
-		gauss_b											<=	bc_ready ? 32'd0 + zero_to_half + rise_to_fall[CLOG2_DDS_SETS:1] : gauss_b;
-		gauss_c											<=	bc_ready ? 32'd0 + rise_to_fall : gauss_c;
-		refresh											<=	|gauss_c & bc_ready;
+		gauss_a2										<=	bc_ready ? gauss_a2_wireholder : gauss_a2;
+		gauss_b											<=	bc_ready ? gauss_b_wireholder : gauss_b;
+		gauss_c											<=	bc_ready ? gauss_c_wireholder : gauss_c;
+		refresh_early									<=	|gauss_c & bc_ready;
 		past_checks										<=	refresh ? {last_cmp_reg_not_zero, half_max_reg_not_zero, cmp_value_last_match_, cmp_future_match_last} : past_checks;
 	end
 end
+latency_reg
+	#(
+		.N(8),
+		.B(1)
+	)
+	refresh_la
+	(
+		.rstn	(rstn				),
+		.clk	(clk				),
+		.din	(refresh_early),
+		.dout	(refresh)
+	);
 assign gauss_output_a = gauss_a2;
 assign gauss_output_b = gauss_b;
 assign gauss_output_c = gauss_c;
