@@ -163,8 +163,8 @@ axi_slv axi_slv_i
 		.START_ADDR_REG	(START_ADDR_REG	),
 		.WE_REG			(WE_REG	 		)
 	);
-
-signal_gen_top
+//signal_gen_top
+signal_gen_top_alt
 	#(
 		.N		(N		),
 		.N_DDS	(N_DDS	)
