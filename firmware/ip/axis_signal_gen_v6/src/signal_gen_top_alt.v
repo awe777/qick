@@ -1,4 +1,4 @@
-module signal_gen_top 
+module signal_gen_top_alt
 	(
 		// Reset and clock.
     	aresetn				,
@@ -95,12 +95,12 @@ wire	[31:0]			mem_dia;
 wire	[N-1:0]			mem_addrb;
 wire	[N_DDS*16-1:0]	mem_dob_real;
 wire	[N_DDS*16-1:0]	mem_dob_imag;
-wire					unused;
+
 
 /**********************/
 /* Begin Architecture */
 /**********************/
-assign unused = &{1'b0, data_addr_read};
+
 // Fifo.
 fifo
     #(
@@ -253,47 +253,47 @@ signal_gen
 		.m_axis_tvalid_o	(m_axis_tvalid_o	),
 		.m_axis_tdata_o		(m_axis_tdata_o		)
 	);
-waveform_extractor_a2 
-	#(
-		.N_DDS	(N_DDS	),
-		.STORED_SETS	(16),
-		.CLOG2_DDS_SETS	(8)
-	)
-	waveform_extractor_i
-	(
-		// Fifo interface.
-
-		// Memory interface.
-		.mem_dout_real_i	(mem_dob_real		),
-		.mem_dout_imag_i	(mem_dob_imag		),
-
-		// M_AXIS for output.
-		.gauss_output_a		(gauss_a			),
-		.gauss_output_b		(gauss_b			),
-		.gauss_output_c		(gauss_c			),
-		.status_flag		(status_flag		),
-		// Reset and clock.
-		.rstn				(aresetn			),
-		.clk				(aclk				)
-	);
-
-// waveform_analyzer
+// waveform_extractor_a2 
 // 	#(
 // 		.N_DDS	(N_DDS	),
-// 		.STORED_SETS	(16)
+// 		.STORED_SETS	(16),
+// 		.CLOG2_DDS_SETS	(8)
 // 	)
-// 	waveform_analyzer_i
+// 	waveform_extractor_i
 // 	(
+// 		// Fifo interface.
+
+// 		// Memory interface.
 // 		.mem_dout_real_i	(mem_dob_real		),
 // 		.mem_dout_imag_i	(mem_dob_imag		),
+
+// 		// M_AXIS for output.
 // 		.gauss_output_a		(gauss_a			),
 // 		.gauss_output_b		(gauss_b			),
 // 		.gauss_output_c		(gauss_c			),
 // 		.status_flag		(status_flag		),
-// 		.data_addr_read		(data_addr_read		),
+// 		// Reset and clock.
 // 		.rstn				(aresetn			),
 // 		.clk				(aclk				)
 // 	);
+
+waveform_analyzer
+	#(
+		.N_DDS	(N_DDS	),
+		.STORED_SETS	(16)
+	)
+	waveform_analyzer_i
+	(
+		.mem_dout_real_i	(mem_dob_real		),
+		.mem_dout_imag_i	(mem_dob_imag		),
+		.gauss_output_a		(gauss_a			),
+		.gauss_output_b		(gauss_b			),
+		.gauss_output_c		(gauss_c			),
+		.status_flag		(status_flag		),
+		.data_addr_read		(data_addr_read		),
+		.rstn				(aresetn			),
+		.clk				(aclk				)
+	);
 
 // Assign outputs.
 assign s1_axis_tready_o	= ~fifo_full;

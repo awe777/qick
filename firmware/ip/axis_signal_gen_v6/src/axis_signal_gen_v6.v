@@ -53,7 +53,8 @@ module axis_signal_gen_v6
 		m_axis_tready	,
 		m_axis_tvalid	,
 		m_axis_tdata,
-		gauss_out
+		gauss_out,
+		data_addr_read
 	);
 
 /**************/
@@ -111,6 +112,7 @@ input					m_axis_tready;
 output					m_axis_tvalid;
 output	[N_DDS*16-1:0]	m_axis_tdata;
 output	[255:0]			gauss_out;
+input	[31:0]			data_addr_read;
 
 /********************/
 /* Internal signals */
@@ -200,7 +202,8 @@ signal_gen_top
 		.gauss_3			(gauss_out[127:96]	),
 		.gauss_2			(gauss_out[95:64]	),
 		.gauss_1			(gauss_out[63:32]	),
-		.gauss_0			(gauss_out[31:0]	)
+		.gauss_0			(gauss_out[31:0]	),
+		.data_addr_read		(data_addr_read)
 	);
 
 endmodule

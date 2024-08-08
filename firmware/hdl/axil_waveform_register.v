@@ -75,7 +75,8 @@ module	axil_waveform_register #(
 		input	wire					S_AXI_RREADY,
 		output	wire	[C_AXI_DATA_WIDTH-1:0]		S_AXI_RDATA,
 		output	wire	[1:0]				S_AXI_RRESP,
-		input	wire	[255:0]			gauss_input
+		input	wire	[255:0]			gauss_input,
+		output	wire	[31:0]			data_addr_read
 		// }}}
 	);
 
@@ -295,7 +296,7 @@ module	axil_waveform_register #(
 		2'b11:	r3 <= wskd_r3;
 		endcase
 	end
-
+assign data_addr_read = r2;
 // 	initial	reg3 = 0;
 // 	initial	reg2 = 0;
 // 	initial	reg1 = 0;
