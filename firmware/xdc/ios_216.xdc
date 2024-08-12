@@ -17,10 +17,10 @@ set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD0_7_LS"] ;# Bank  88 VCCO - V
 
 set_property PACKAGE_PIN L17       [get_ports "PMOD1_0_LS"]
 set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD1_0_LS"]
-set_property PACKAGE_PIN N14       [get_ports "i2c_0_sda_o"] ;# Bank  88 VCCO - VCC1V8   - IO_L1N_AD15N_88
-set_property IOSTANDARD  LVCMOS18  [get_ports "i2c_0_sda_o"] ;# Bank  88 VCCO - VCC1V8   - IO_L1N_AD15N_88
-set_property PACKAGE_PIN N16       [get_ports "i2c_0_scl_o"] ;# Bank  88 VCCO - VCC1V8   - IO_L1P_AD15P_88
-set_property IOSTANDARD  LVCMOS18  [get_ports "i2c_0_scl_o"] ;# Bank  88 VCCO - VCC1V8   - IO_L1P_AD15P_88
+set_property PACKAGE_PIN N14       [get_ports "PL_I2C0_SDA_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L1N_AD15N_88
+set_property IOSTANDARD  LVCMOS18  [get_ports "PL_I2C0_SDA_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L1N_AD15N_88
+set_property PACKAGE_PIN N16       [get_ports "PL_I2C0_SCL_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L1P_AD15P_88
+set_property IOSTANDARD  LVCMOS18  [get_ports "PL_I2C0_SCL_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L1P_AD15P_88
 #set_property PACKAGE_PIN M17       [get_ports "PMOD1_1_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L4P_AD12P_88
 #set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD1_1_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L4P_AD12P_88
 #set_property PACKAGE_PIN M14       [get_ports "PMOD1_2_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L3N_AD13N_88
@@ -35,8 +35,12 @@ set_property IOSTANDARD  LVCMOS18  [get_ports "i2c_0_scl_o"] ;# Bank  88 VCCO - 
 #set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD1_6_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L1N_AD15N_88
 #set_property PACKAGE_PIN N16       [get_ports "PMOD1_7_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L1P_AD15P_88
 #set_property IOSTANDARD  LVCMOS18  [get_ports "PMOD1_7_LS"] ;# Bank  88 VCCO - VCC1V8   - IO_L1P_AD15P_88
-set_property PULLUP true 			[get_ports "i2c_0_sda_o"]
-set_property PULLUP true 			[get_ports "i2c_0_scl_o"]
+set_property PULLUP true 			[get_ports "PL_I2C0_SDA_LS"]
+set_property PULLUP true 			[get_ports "PL_I2C0_SCL_LS"]
+set_property PACKAGE_PIN B11       [get_ports "PL_I2C0_SCL_LS"] ;# Bank  89 VCCO - VCC1V8   - IO_L10N_AD2N_89
+set_property IOSTANDARD  LVCMOS18  [get_ports "PL_I2C0_SCL_LS"] ;# Bank  89 VCCO - VCC1V8   - IO_L10N_AD2N_89
+set_property PACKAGE_PIN C11       [get_ports "PL_I2C0_SDA_LS"] ;# Bank  89 VCCO - VCC1V8   - IO_L10P_AD2P_89
+set_property IOSTANDARD  LVCMOS18  [get_ports "PL_I2C0_SDA_LS"] ;# Bank  89 VCCO - VCC1V8   - IO_L10P_AD2P_89
 # set_property PACKAGE_PIN J14 [get_ports {pmod_output_0[7]}]
 # set_property PACKAGE_PIN J13 [get_ports {pmod_output_0[6]}]
 # set_property PACKAGE_PIN H13 [get_ports {pmod_output_0[5]}]
