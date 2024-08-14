@@ -33,6 +33,7 @@ wire										disable_memory_update;
 reg											stop_shift_register;
 reg											last_set_nonzero;
 wire										flush_memory;
+wire										stop_sr_trigger;
 reg			[3:0]							ctrl_flush_memory;
 reg			[3:0]							ctrl_sr_en_toggle;
 reg			[7:0]							addr_a;
@@ -92,24 +93,25 @@ assign disable_memory_update = stop_shift_register | last_set_nonzero;
 // section 3 "assignment" - long form
 always @(posedge clk) begin
 	if (~rstn) begin 
+		stop_shift_register	<=	0;
 		ctrl_flush_memory	<=	0;
 		ctrl_sr_en_toggle	<=	0;
 		addr_a				<=	0;
 		addr_b				<=	0;
 		addr_c				<=	0;
-		stop_shift_register	<=	0;
 		last_set_nonzero	<=	0;
 	end
 	else begin 
+		stop_shift_register	<=	stop_sr_trigger ^ stop_shift_register;
 		ctrl_flush_memory	<=	data_addr_read[31:28];
 		ctrl_sr_en_toggle	<=	data_addr_read[27:24];
 		addr_a				<=	data_addr_read[23:16];
 		addr_b				<=	data_addr_read[15:8];
 		addr_c				<=	data_addr_read[7:0];
-		stop_shift_register	<=	|(ctrl_sr_en_toggle ^ data_addr_read[27:24]) ? ~stop_shift_register : stop_shift_register;
 		last_set_nonzero	<=	|stored_values[240];
 	end
 end
+assign stop_sr_trigger = |(ctrl_sr_en_toggle ^ data_addr_read[27:24]);
 always @(posedge clk) begin
 	if (~rstn | flush_memory) begin 
 		stop_trigger		<=	0;
