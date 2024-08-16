@@ -102,7 +102,7 @@ always @(posedge clk) begin
 		last_set_nonzero	<=	0;
 	end
 	else begin 
-		stop_shift_register	<=	stop_sr_trigger ^ stop_shift_register;
+		stop_shift_register	<=	stop_sr_trigger ? ~stop_shift_register : stop_shift_register;
 		ctrl_flush_memory	<=	data_addr_read[31:28];
 		ctrl_sr_en_toggle	<=	data_addr_read[27:24];
 		addr_a				<=	data_addr_read[23:16];
@@ -128,7 +128,7 @@ always @(posedge clk) begin
 		result_b		<=	0;
 		result_c		<=	0;
 	end
-	else if (stop_shift_register) begin 
+	else if (disable_memory_update) begin 
 		result_a		<=	stored_values[addr_a];
 		result_b		<=	stored_values[addr_b];
 		result_c		<=	stored_values[addr_c];
