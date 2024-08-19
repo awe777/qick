@@ -44,21 +44,27 @@ reg			[1:0]							stop_trigger;
 reg			[31:0]							result_a;
 reg			[31:0]							result_b;
 reg			[31:0]							result_c;
-// section 1 "assignment" - long form
-generate 
-genvar i_a;
-	for (i_a=0; i_a<N_DDS; i_a=i_a+1) begin : section_1
-		assign data_comb[i_a] = {last_real[i_a], last_imag[i_a]};
+// section 1 "assignment" - short form
+generate
+genvar i_a_re;
+	for (i_a_re=0; i_a_re<N_DDS; i_a_re=i_a_re+1) begin : section_1_re
 		always @(posedge clk) begin
-			if (~rstn) begin
-				last_real[i_a]						<=	0;
-				last_imag[i_a]						<=	0;
-			end
-			else begin
-				last_real[i_a]						<=	mem_dout_real_i		[i_a*16 +: 16];
-				last_imag[i_a]						<=	mem_dout_imag_i		[i_a*16 +: 16];
-			end
+			last_real[i_a_re]	<=	rstn ? mem_dout_real_i[i_a_re*16 +: 16] : 0;
 		end
+	end
+endgenerate
+generate 
+genvar i_a_im;
+	for (i_a_im=0; i_a_im<N_DDS; i_a_im=i_a_im+1) begin : section_1_im
+		always @(posedge clk) begin
+			last_imag[i_a_im]	<=	rstn ? mem_dout_imag_i[i_a_im*16 +: 16] : 0;
+		end
+	end
+endgenerate
+generate 
+genvar i_a_dc;
+	for (i_a_dc=0; i_a_dc<N_DDS; i_a_dc=i_a_dc+1) begin : section_1_dc
+		assign data_comb[i_a_dc] = {last_real[i_a_dc], last_imag[i_a_dc]};
 	end
 endgenerate
 // section 2 "assignment" - long form
@@ -90,26 +96,27 @@ genvar i_b, j_b;
 	end
 endgenerate
 assign disable_memory_update = stop_shift_register | last_set_nonzero;
-// section 3 "assignment" - long form
+// section 3 "assignment" - long+short form
 always @(posedge clk) begin
-	if (~rstn) begin 
-		stop_shift_register	<=	0;
-		ctrl_flush_memory	<=	0;
-		ctrl_sr_en_toggle	<=	0;
-		addr_a				<=	0;
-		addr_b				<=	0;
-		addr_c				<=	0;
-		last_set_nonzero	<=	0;
-	end
-	else begin 
-		stop_shift_register	<=	stop_sr_trigger ? ~stop_shift_register : stop_shift_register;
-		ctrl_flush_memory	<=	data_addr_read[31:28];
-		ctrl_sr_en_toggle	<=	data_addr_read[27:24];
-		addr_a				<=	data_addr_read[23:16];
-		addr_b				<=	data_addr_read[15:8];
-		addr_c				<=	data_addr_read[7:0];
-		last_set_nonzero	<=	|stored_values[240];
-	end
+	stop_shift_register	<=	rstn & (stop_sr_trigger ^ stop_shift_register);
+end
+always @(posedge clk) begin
+	ctrl_flush_memory	<=	rstn ? data_addr_read[31:28] : 0;
+end
+always @(posedge clk) begin
+	ctrl_sr_en_toggle	<=	rstn ? data_addr_read[27:24] : 0;
+end
+always @(posedge clk) begin
+	addr_a				<=	rstn ? data_addr_read[23:16] : 0;
+end
+always @(posedge clk) begin
+	addr_b				<=	rstn ? data_addr_read[15:8] : 0;
+end
+always @(posedge clk) begin
+	addr_c				<=	rstn ? data_addr_read[7:0] : 0;
+end
+always @(posedge clk) begin
+	last_set_nonzero	<=	rstn ? |stored_values[240] : 0;
 end
 assign stop_sr_trigger = |(ctrl_sr_en_toggle ^ data_addr_read[27:24]);
 always @(posedge clk) begin
@@ -123,14 +130,26 @@ end
 assign flush_memory = |(ctrl_flush_memory ^ data_addr_read[31:28]);
 // section 4 "assignment" - long form
 always @(posedge clk) begin
-	if (~rstn | flush_memory) begin 
+	if (~rstn | flush_memory) begin
 		result_a		<=	0;
+	end
+	else if (disable_memory_update) begin
+		result_a		<=	stored_values[addr_a];
+	end
+end
+always @(posedge clk) begin
+	if (~rstn | flush_memory) begin
 		result_b		<=	0;
+	end
+	else if (disable_memory_update) begin
+		result_b		<=	stored_values[addr_b];
+	end
+end
+always @(posedge clk) begin
+	if (~rstn | flush_memory) begin
 		result_c		<=	0;
 	end
-	else if (disable_memory_update) begin 
-		result_a		<=	stored_values[addr_a];
-		result_b		<=	stored_values[addr_b];
+	else if (disable_memory_update) begin
 		result_c		<=	stored_values[addr_c];
 	end
 end
