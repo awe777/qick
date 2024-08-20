@@ -95,7 +95,7 @@ wire	[31:0]			mem_dia;
 wire	[N-1:0]			mem_addrb;
 wire	[N_DDS*16-1:0]	mem_dob_real;
 wire	[N_DDS*16-1:0]	mem_dob_imag;
-
+wire	[N_DDS*16-1:0]	output_data;
 
 /**********************/
 /* Begin Architecture */
@@ -251,7 +251,7 @@ signal_gen
 		// M_AXIS for output.
 		.m_axis_tready_i	(m_axis_tready_i	),
 		.m_axis_tvalid_o	(m_axis_tvalid_o	),
-		.m_axis_tdata_o		(m_axis_tdata_o		)
+		.m_axis_tdata_o		(output_data		)
 	);
 // waveform_extractor_a2 
 // 	#(
@@ -284,8 +284,8 @@ waveform_analyzer
 	)
 	waveform_analyzer_i
 	(
-		.mem_dout_real_i	(mem_dia[15:0]		),
-		.mem_dout_imag_i	(mem_dia[31:16]		),
+		.mem_dout_real_i	(output_data		),
+		.mem_dout_imag_i	(output_data		),
 		.gauss_output_a		(gauss_a			),
 		.gauss_output_b		(gauss_b			),
 		.gauss_output_c		(gauss_c			),
@@ -309,6 +309,6 @@ assign gauss_3 = {mem_addra, fifo_dout[111:96]};
 assign gauss_2 = {mem_ena, fifo_dout[79:64]};
 assign gauss_1 = fifo_dout[63:32];
 assign gauss_0 = fifo_dout[31:0];
-
+assign m_axis_tdata_o = output_data;
 endmodule
 
