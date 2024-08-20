@@ -284,8 +284,8 @@ waveform_analyzer
 	)
 	waveform_analyzer_i
 	(
-		.mem_dout_real_i	(mem_dob_real		),
-		.mem_dout_imag_i	(mem_dob_imag		),
+		.mem_dout_real_i	(mem_dia[15:0]		),
+		.mem_dout_imag_i	(mem_dia[31:16]		),
 		.gauss_output_a		(gauss_a			),
 		.gauss_output_b		(gauss_b			),
 		.gauss_output_c		(gauss_c			),
@@ -305,8 +305,8 @@ assign s1_axis_tready_o	= ~fifo_full;
 // |------------|-------|---------|------|------------|------------|------------|-----------|----------|----------|----------|---------|
 // since there are unused waveform interface, might as well use funny words as placeholder + proof of working memory assignment
 assign gauss_4 = {status_flag, fifo_dout[151:128]};
-assign gauss_3 = {16'hdead, fifo_dout[111:96]};
-assign gauss_2 = {16'hbeef, fifo_dout[79:64]};
+assign gauss_3 = {mem_addra, fifo_dout[111:96]};
+assign gauss_2 = {mem_ena, fifo_dout[79:64]};
 assign gauss_1 = fifo_dout[63:32];
 assign gauss_0 = fifo_dout[31:0];
 
