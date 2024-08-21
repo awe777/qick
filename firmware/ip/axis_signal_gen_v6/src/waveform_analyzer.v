@@ -116,7 +116,7 @@ always @(posedge clk) begin
 	addr_c				<=	rstn ? data_addr_read[7:0] : 0;
 end
 always @(posedge clk) begin
-	last_set_nonzero	<=	rstn ? |stored_values[240] : 0;
+	last_set_nonzero	<=	rstn ? |stored_values[240] | |stored_values[246] | |stored_values[247] | |stored_values[255] : 0;
 end
 assign stop_sr_trigger = |(ctrl_sr_en_toggle ^ data_addr_read[27:24]);
 always @(posedge clk) begin
